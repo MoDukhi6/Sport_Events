@@ -17,7 +17,7 @@ export default function TabLayout() {
         tabBarButton: HapticTab,
       }}
     >
-      {/* Main visible tabs */}
+      {/* 🏠 Home */}
       <Tabs.Screen
         name="home"
         options={{
@@ -27,6 +27,19 @@ export default function TabLayout() {
           ),
         }}
       />
+
+      {/* ⚽ Sport */}
+      <Tabs.Screen
+        name="sport"
+        options={{
+          title: 'Sport',
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="sportscourt.fill" color={color} />
+          ),
+        }}
+      />
+
+      {/* 📰 News */}
       <Tabs.Screen
         name="news"
         options={{
@@ -36,6 +49,8 @@ export default function TabLayout() {
           ),
         }}
       />
+
+      {/* 📅 Booking */}
       <Tabs.Screen
         name="booking"
         options={{
@@ -45,6 +60,8 @@ export default function TabLayout() {
           ),
         }}
       />
+
+      {/* 👤 Profile */}
       <Tabs.Screen
         name="profile"
         options={{
