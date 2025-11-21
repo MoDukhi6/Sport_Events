@@ -1,0 +1,146 @@
+mutation CreateDemoData @transaction @auth(level: PUBLIC, insecureReason: "This operation is safe to expose to the public as it is used for seeding data") {
+  sport_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      name: "Soccer",
+      description: "The most popular sport in the world",
+      createdAt: "2024-04-03T00:00:00Z"
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440001",
+      name: "Basketball",
+      description: "A fast-paced sport with a lot of action",
+      createdAt: "2024-04-03T00:00:00Z"
+    }
+  ])
+  team_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440002",
+      sportId: "550e8400-e29b-41d4-a716-446655440000",
+      name: "FC Barcelona",
+      country: "Spain",
+      logoUrl: "https://upload.wikimedia.org/wikipedia/en/thumb/4/47/FC_Barcelona_%28crest%29.svg/1200px-FC_Barcelona_%28crest%29.svg.png",
+      createdAt: "2024-04-03T00:00:00Z"
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440003",
+      sportId: "550e8400-e29b-41d4-a716-446655440001",
+      name: "Los Angeles Lakers",
+      country: "USA",
+      logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Los_Angeles_Lakers_logo.svg/1200px-Los_Angeles_Lakers_logo.svg.png",
+      createdAt: "2024-04-03T00:00:00Z"
+    }
+  ])
+  event_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440004",
+      sportId: "550e8400-e29b-41d4-a716-446655440000",
+      team1Id: "550e8400-e29b-41d4-a716-446655440002",
+      team2Id: null,
+      name: "El Clásico",
+      description: "The most important soccer match in the world",
+      venue: "Camp Nou",
+      eventDate: "2024-04-21T00:00:00Z",
+      createdAt: "2024-04-03T00:00:00Z",
+      score: "3-2"
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440005",
+      sportId: "550e8400-e29b-41d4-a716-446655440001",
+      team1Id: "550e8400-e29b-41d4-a716-446655440003",
+      team2Id: null,
+      name: "Lakers vs Celtics",
+      description: "The most important basketball match in the world",
+      venue: "Staples Center",
+      eventDate: "2024-04-23T00:00:00Z",
+      createdAt: "2024-04-03T00:00:00Z",
+      score: "100-98"
+    }
+  ])
+  newsArticle_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440006",
+      sportId: "550e8400-e29b-41d4-a716-446655440000",
+      title: "Barcelona wins El Clásico",
+      content: "Barcelona defeated Real Madrid 3-2 in a thrilling match",
+      author: "John Doe",
+      url: "https://www.example.com/barcelona-wins-el-clasico",
+      imageUrl: "https://www.example.com/barcelona-wins-el-clasico.jpg",
+      publishedAt: "2024-04-22T00:00:00Z"
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440007",
+      sportId: "550e8400-e29b-41d4-a716-446655440001",
+      title: "Lakers defeat Celtics in a close game",
+      content: "Lakers defeated Celtics 100-98 in a thrilling match",
+      author: "Jane Smith",
+      url: "https://www.example.com/lakers-defeat-celtics",
+      imageUrl: "https://www.example.com/lakers-defeat-celtics.jpg",
+      publishedAt: "2024-04-24T00:00:00Z"
+    }
+  ])
+  prediction_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440008",
+      eventId: "550e8400-e29b-41d4-a716-446655440004",
+      predictionText: "Barcelona will win El Clásico",
+      predictionDate: "2024-04-20T00:00:00Z",
+      createdAt: "2024-04-03T00:00:00Z",
+      confidenceScore: 0.8,
+      odds: "2.0"
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440009",
+      eventId: "550e8400-e29b-41d4-a716-446655440005",
+      predictionText: "Lakers will win against the Celtics",
+      predictionDate: "2024-04-22T00:00:00Z",
+      createdAt: "2024-04-03T00:00:00Z",
+      confidenceScore: 0.7,
+      odds: "1.8"
+    }
+  ])
+  user_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440010",
+      username: "johndoe",
+      email: "johndoe@example.com",
+      displayName: "John Doe",
+      photoUrl: "https://www.example.com/johndoe.jpg",
+      createdAt: "2024-04-03T00:00:00Z"
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440011",
+      username: "janesmith",
+      email: "janesmith@example.com",
+      displayName: "Jane Smith",
+      photoUrl: "https://www.example.com/janesmith.jpg",
+      createdAt: "2024-04-03T00:00:00Z"
+    }
+  ])
+  ticket_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440012",
+      eventId: "550e8400-e29b-41d4-a716-446655440004",
+      userId: "550e8400-e29b-41d4-a716-446655440010",
+      seatNumber: "A1",
+      section: "Main Stand",
+      price: 100.0,
+      status: "confirmed",
+      recommendationScore: 9,
+      bookingDate: "2024-04-19T00:00:00Z",
+      createdAt: "2024-04-03T00:00:00Z"
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440013",
+      eventId: "550e8400-e29b-41d4-a716-446655440005",
+      userId: "550e8400-e29b-41d4-a716-446655440011",
+      seatNumber: "B2",
+      section: " courtside",
+      price: 200.0,
+      status: "confirmed",
+      recommendationScore: 10,
+      bookingDate: "2024-04-21T00:00:00Z",
+      createdAt: "2024-04-03T00:00:00Z"
+    }
+  ])
+}

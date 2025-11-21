@@ -1,0 +1,64 @@
+type User @table {
+  username: String!
+  email: String!
+  createdAt: Timestamp!
+  displayName: String
+  photoUrl: String
+}
+
+type Sport @table {
+  name: String!
+  createdAt: Timestamp!
+  description: String
+}
+
+type Team @table {
+  name: String!
+  createdAt: Timestamp!
+  logoUrl: String
+  country: String
+  sport: Sport
+}
+
+type Event @table {
+  name: String!
+  eventDate: Timestamp!
+  venue: String!
+  createdAt: Timestamp!
+  description: String
+  score: String
+  sport: Sport
+  team1: Team
+  team2: Team
+}
+
+type Ticket @table {
+  price: Float!
+  seatNumber: String!
+  section: String!
+  status: String!
+  createdAt: Timestamp!
+  bookingDate: Timestamp
+  recommendationScore: Int
+  user: User
+  event: Event
+}
+
+type NewsArticle @table {
+  title: String!
+  content: String!
+  publishedAt: Timestamp!
+  url: String!
+  imageUrl: String
+  author: String
+  sport: Sport
+}
+
+type Prediction @table {
+  predictionText: String!
+  predictionDate: Timestamp!
+  createdAt: Timestamp!
+  confidenceScore: Float
+  odds: String
+  event: Event
+}

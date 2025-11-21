@@ -1,0 +1,46 @@
+# Query: List all public events, accessible to anyone.
+# Demonstrates a simple query with public access.
+query ListPublicEvents @auth(level: PUBLIC, insecureReason: "This operation is safe to expose to the public") {
+  events(where: {isPublic: {eq: true}}) {
+    id
+    title
+    description
+    startTime
+    endTime
+    locationName
+  }
+}
+
+# Mutation: Create a new event.  Requires user authentication.
+# Demonstrates inserting data, using a server value for the creator's ID.
+mutation CreateEvent($title: String!, $description: String!, $startTime: Timestamp!, $endTime: Timestamp!, $locationName: String!) @auth(level: USER) {
+  event: event_insert(data: {
+    title: $title
+    description: $description
+    startTime: $startTime
+    endTime: $endTime
+    locationName: $locationName
+    creatorUid_expr: "auth.uid"
+    isPublic: false
+  })
+}
+
+# Query: Get a single event by ID.  Requires user authentication due to potentially sensitive data.
+# Demonstrates querying with a variable and user-level authentication.
+query GetEvent($id: UUID!) @auth(level: USER) {
+  event(key: {id: $id}) {
+    id
+    title
+    description
+    startTime
+    endTime
+    locationName
+    creatorUid
+  }
+}
+
+# Mutation: Delete an event. Requires user authentication AND admin privileges.
+# Demonstrates using an auth expression to check for a custom claim.
+mutation DeleteEvent($id: UUID!) @auth(expr: "auth.token.admin == true") {
+  event: event_delete(key: {id: $id})
+}
