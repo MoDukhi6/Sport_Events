@@ -1,4 +1,4 @@
-// useFetchEvents.ts
+/*// useFetchEvents.ts
 import { useEffect, useState } from 'react';
 import { fetchFixtures } from '../scripts/fetchData'; // or your correct path
 
@@ -32,3 +32,65 @@ export default function useFetchEvents(leagueId: string | undefined) {
 
   return { events, loading, error };
 }
+*/
+
+// hooks/useFetchEvents.ts
+import { useEffect, useState } from 'react';
+import { API_BASE_URL } from '../constants/api';
+
+export type SportType =
+  | 'all'
+  | 'football'
+  | 'basketball'
+  | 'baseball'
+  | 'tennis'
+  | 'formula1'
+  | 'hockey';
+
+export type NewsArticle = {
+  title: string;
+  description: string | null;
+  url: string;
+  urlToImage: string | null;
+  source: string | null;
+  publishedAt: string;
+};
+
+export function useFetchEvents(sport: SportType) {
+  const [articles, setArticles] = useState<NewsArticle[]>([]);
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchNews = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const res = await fetch(
+          `${API_BASE_URL}/api/news?sport=${encodeURIComponent(sport)}&page=1`
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data?.error || data?.message || 'Failed to fetch news');
+        }
+
+        setArticles(data.articles || []);
+      } catch (e: any) {
+        console.log('❌ Error fetching news:', e?.message || e);
+        setError(e?.message ?? 'Failed to fetch news');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNews();
+  }, [sport]);
+
+  return { articles, loading, error };
+}
+
+// so both `import { useFetchEvents } ...` and `import useFetchEvents ...` work
+export default useFetchEvents;

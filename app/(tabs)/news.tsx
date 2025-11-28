@@ -1,14 +1,15 @@
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Image,
+    Pressable,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 import { fetchSportsNews, type Article } from '../api/news-api';
 
@@ -90,98 +91,108 @@ export default function NewsScreen() {
   }, [loadingMore, loading, hasMore, page, selectedCategory]);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Sports News</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <Text style={styles.title}>Sports News</Text>
 
-      {/* Category buttons */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.chips}
-      >
-        {CATEGORIES.map((cat) => (
-          <Pressable
-            key={cat.id}
-            onPress={() => setSelectedCategory(cat.id)}
-            style={[
-              styles.chip,
-              selectedCategory === cat.id && styles.chipActive,
-            ]}
-          >
-            <Text
+        {/* Category buttons */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.chips}
+        >
+          {CATEGORIES.map((cat) => (
+            <Pressable
+              key={cat.id}
+              onPress={() => setSelectedCategory(cat.id)}
               style={[
-                styles.chipText,
-                selectedCategory === cat.id && styles.chipTextActive,
+                styles.chip,
+                selectedCategory === cat.id && styles.chipActive,
               ]}
             >
-              {cat.label}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-
-      {loading ? (
-        <ActivityIndicator size="large" />
-      ) : (
-        <FlatList
-          data={articles}
-          keyExtractor={(_, i) => i.toString()}
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.card}
-              onPress={() =>
-                router.push({
-                  pathname: '/news-details',
-                  params: {
-                    title: item.title,
-                    description: item.description ?? '',
-                    url: item.url,
-                    imageUrl: item.urlToImage ?? '',
-                    source: item.source ?? '',
-                    publishedAt: item.publishedAt ?? '',
-                  },
-                } as never)
-              }
-            >
-
-              {item.urlToImage && (
-                <Image source={{ uri: item.urlToImage }} style={styles.image} />
-              )}
-
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <Text numberOfLines={3} style={styles.cardDescription}>
-                  {item.description}
-                </Text>
-                {/* source is now a string */}
-                {item.source && (
-                  <Text style={styles.source}>{item.source}</Text>
-                )}
-              </View>
+              <Text
+                style={[
+                  styles.chipText,
+                  selectedCategory === cat.id && styles.chipTextActive,
+                ]}
+              >
+                {cat.label}
+              </Text>
             </Pressable>
-          )}
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={
-            loadingMore ? (
-              <View style={{ paddingVertical: 16 }}>
-                <ActivityIndicator />
-              </View>
-            ) : null
-          }
-        />
-      )}
-    </View>
+          ))}
+        </ScrollView>
+
+        {loading ? (
+          <ActivityIndicator size="large" />
+        ) : (
+          <FlatList
+            data={articles}
+            keyExtractor={(_, i) => i.toString()}
+            renderItem={({ item }) => (
+              <Pressable
+                style={styles.card}
+                onPress={() =>
+                  router.push({
+                    pathname: '/news-details',
+                    params: {
+                      title: item.title,
+                      description: item.description ?? '',
+                      url: item.url,
+                      imageUrl: item.urlToImage ?? '',
+                      source: item.source ?? '',
+                      publishedAt: item.publishedAt ?? '',
+                    },
+                  } as never)
+                }
+              >
+                {item.urlToImage && (
+                  <Image source={{ uri: item.urlToImage }} style={styles.image} />
+                )}
+
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle}>{item.title}</Text>
+                  <Text numberOfLines={3} style={styles.cardDescription}>
+                    {item.description}
+                  </Text>
+                  {item.source && (
+                    <Text style={styles.source}>{item.source}</Text>
+                  )}
+                </View>
+              </Pressable>
+            )}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={
+              loadingMore ? (
+                <View style={{ paddingVertical: 16 }}>
+                  <ActivityIndicator />
+                </View>
+              ) : null
+            }
+          />
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 12, backgroundColor: '#f5f5f5' },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    paddingTop: 20, // move everything a bit down
+    backgroundColor: '#f5f5f5',
+  },
   title: {
     fontSize: 22,
     fontWeight: '600',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   chips: { marginBottom: 10 },
   chip: {

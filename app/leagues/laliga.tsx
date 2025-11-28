@@ -1,4 +1,4 @@
-import useFetchEvents from '@/hooks/useFetchEvents';
+/*import { useFetchEvents } from '@/hooks/useFetchEvents';
 import { useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, FlatList, Text, View } from 'react-native';
@@ -34,3 +34,5 @@ export default function LeagueEventsPage() {
     </View>
   );
 }
+
+*/
