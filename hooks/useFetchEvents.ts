@@ -67,11 +67,16 @@ export function useFetchEvents(sport: SportType) {
         setLoading(true);
         setError(null);
 
-        const res = await fetch(
-          `${API_BASE_URL}/api/news?sport=${encodeURIComponent(sport)}&page=1`
-        );
+        const url = `${API_BASE_URL}/api/news?sport=${encodeURIComponent(
+          sport
+        )}&page=1`;
 
+        console.log('📰 Fetching news from:', url);
+
+        const res = await fetch(url);
         const data = await res.json();
+
+        console.log('📰 News response:', data);
 
         if (!res.ok) {
           throw new Error(data?.error || data?.message || 'Failed to fetch news');
@@ -92,5 +97,5 @@ export function useFetchEvents(sport: SportType) {
   return { articles, loading, error };
 }
 
-// so both `import { useFetchEvents } ...` and `import useFetchEvents ...` work
+// Allow both default and named import
 export default useFetchEvents;

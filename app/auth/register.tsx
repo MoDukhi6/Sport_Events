@@ -10,7 +10,7 @@ import {
     View,
 } from 'react-native';
 
-const API_BASE_URL = 'http://192.168.68.54:4000';
+import { API_BASE_URL } from '../../constants/api';
 
 export default function Register() {
   const [username, setUsername] = useState('');
