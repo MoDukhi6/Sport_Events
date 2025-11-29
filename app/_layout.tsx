@@ -1,31 +1,39 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+// app/_layout.tsx
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import React from 'react';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ThemeProvider, useAppTheme } from '../constants/ThemeProvider';
 
 export const unstable_settings = {
   // 👇 Start app at the login screen
   initialRouteName: 'auth/login',
 };
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+function RootStack() {
+  const { isDark } = useAppTheme();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <>
       <Stack screenOptions={{ headerShown: false }}>
         {/* 👇 Login screen route */}
         <Stack.Screen name="auth/login" options={{ headerShown: false }} />
 
         {/* 👇 Main tab navigation (Home, News, Booking, Profile) */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-
       </Stack>
 
-      {/* 👇 Auto StatusBar theme */}
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      {/* 👇 StatusBar controlled by our custom theme, NOT system theme */}
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <RootStack />
     </ThemeProvider>
   );
 }
