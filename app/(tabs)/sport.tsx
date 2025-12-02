@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import React from 'react';
 import {
     FlatList,
@@ -20,8 +20,16 @@ const sports = [
 ];
 
 export default function SportPage() {
+  const router = useRouter();
+
   const handlePress = (id: string) => {
-    router.push(`/leagues/${id}`);
+    if (id === 'football') {
+      // go to the dedicated football hub screen
+      router.push('/football/leagues' as any); // `as any` just silences the TS route union
+    } else {
+      // later we can route other sports
+      // router.push(`/somewhere-for-${id}`);
+    }
   };
 
   return (

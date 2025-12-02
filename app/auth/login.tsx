@@ -1,4 +1,5 @@
 // app/auth/login.tsx
+/*
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, router } from 'expo-router';
 import React, { useState } from 'react';
@@ -105,10 +106,11 @@ const styles = StyleSheet.create({
   footerRow:{ flexDirection:'row', justifyContent:'center', gap:8, marginTop:12 },
   muted:{ color:'#6b7280' },
   link:{ color:'#2563eb', fontWeight:'700' },
-});
-//*/
+}); 
+*/
+
 //////////////////////
-/*
+
 import { Link, router } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -181,4 +183,3 @@ const styles = StyleSheet.create({
   muted:{ color:'#6b7280' },
   link:{ color:'#2563eb', fontWeight:'700' },
 });
-*/
