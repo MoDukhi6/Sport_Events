@@ -181,7 +181,10 @@ export async function getTeamById(teamId: number): Promise<any | null> {
 // Helper function to get current season year
 export function getCurrentSeasonYear(): number {
   const now = new Date();
-  return now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  // Season starts in August (month 7, 0-indexed)
+  // If we're in August-December, use current year
+  // If we're in January-July, use previous year
+  return now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
 }
 
 // League IDs for reference

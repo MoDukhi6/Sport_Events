@@ -1,4 +1,5 @@
 // app/football/matches.tsx
+import { API_BASE_URL } from '@/constants/api';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -10,7 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { getLiveMatches, type Fixture } from '../api/football-api';
+import { type Fixture } from '../api/football-api';
 
 type TabType = 'yesterday' | 'today' | 'tomorrow';
 
@@ -73,19 +74,21 @@ export default function MatchesScreen() {
 
       // Fetch fixtures for the selected date
       const response = await fetch(
-        `http://10.197.235.222:4000/api/football/fixtures/today?date=${dateToFetch}&leagues=${numericLeagueId}`
+        `${API_BASE_URL}/api/football/fixtures/today?date=${dateToFetch}&leagues=${numericLeagueId}`
       );
       const data = await response.json();
 
       setFixtures(data);
 
-      // If it's today, also fetch live matches
-      if (selectedTab === 'today') {
-        const liveData = await getLiveMatches(numericLeagueId);
-        setLiveMatches(liveData);
-      } else {
-        setLiveMatches([]);
-      }
+      // Extract live matches for display
+      const live = data.filter((f: Fixture) => 
+        f.fixture.status.short === '1H' || 
+        f.fixture.status.short === '2H' ||
+        f.fixture.status.short === 'HT' ||
+        f.fixture.status.short === 'ET' ||
+        f.fixture.status.short === 'P'
+      );
+      setLiveMatches(live);
 
       console.log(`✅ Found ${data.length} fixtures for ${selectedTab}`);
     } catch (err) {
@@ -121,7 +124,7 @@ export default function MatchesScreen() {
   };
 
   // Render a single match card
-  const renderMatch = (match: Fixture) => {
+  const renderMatch = (match: Fixture, index: number) => {
     const isLive = match.fixture.status.short === '1H' || 
                    match.fixture.status.short === '2H' ||
                    match.fixture.status.short === 'HT' ||
@@ -139,7 +142,7 @@ export default function MatchesScreen() {
     const awayGoals = match.goals.away ?? '-';
 
     return (
-      <View key={match.fixture.id} style={styles.matchCard}>
+      <View key={`match-${match.fixture.id}-${index}`} style={styles.matchCard}>
         {/* Live badge */}
         {isLive && (
           <View style={styles.liveBadge}>
@@ -190,12 +193,8 @@ export default function MatchesScreen() {
     );
   };
 
-  // Merge live matches with fixtures for "today" tab
-  const displayFixtures = selectedTab === 'today' 
-    ? [...liveMatches, ...fixtures.filter(f => 
-        !liveMatches.find(live => live.fixture.id === f.fixture.id)
-      )]
-    : fixtures;
+  // Backend now returns all fixtures (live + scheduled + finished)
+  const displayFixtures = fixtures;
 
   return (
     <View style={styles.container}>
@@ -275,7 +274,7 @@ export default function MatchesScreen() {
             </Text>
           </View>
         ) : (
-          displayFixtures.map((match) => renderMatch(match))
+          displayFixtures.map((match, index) => renderMatch(match, index))
         )}
       </ScrollView>
     </View>

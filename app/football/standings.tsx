@@ -12,7 +12,7 @@ import {
 import { getLeagueStandings, type LeagueStandings } from '../api/football-api';
 
 // ⚠️ NOTE: Free API plan only has access to seasons 2021-2023
-const AVAILABLE_SEASONS = [2023, 2022, 2021];
+const AVAILABLE_SEASONS = [2025, 2024, 2023, 2022];
 
 export default function StandingsScreen() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function StandingsScreen() {
   const isChampionsLeague = selectedLeague === 2;
 
   // Default to 2023 season (most recent available in free plan)
-  const [selectedSeason, setSelectedSeason] = useState<number>(2023);
+  const [selectedSeason, setSelectedSeason] = useState<number>(2025);
   const [standings, setStandings] = useState<LeagueStandings | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -136,7 +136,7 @@ export default function StandingsScreen() {
         <Text style={styles.backText}>‹ Back</Text>
       </Pressable>
 
-      {/* Season selector - Only show available seasons (2023, 2022, 2021) */}
+      {/* Season selector - Only show available seasons (2025, 2024, 2023, 2022) */}
       <View style={styles.seasonRow}>
         {AVAILABLE_SEASONS.map((season) => (
           <Pressable
@@ -158,11 +158,6 @@ export default function StandingsScreen() {
           </Pressable>
         ))}
       </View>
-
-      {/* Info message about free plan */}
-      <Text style={styles.infoText}>
-        ℹ️ Free plan: Seasons 2021-2023 only
-      </Text>
 
       {/* Champions League Knockout Button */}
       {isChampionsLeague && !loading && standings && (

@@ -1,22 +1,22 @@
+// app/auth/register.tsx
 import { Link, router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
-
 import { API_BASE_URL } from '../../constants/api';
 
 export default function Register() {
   const [username, setUsername] = useState('');
-  const [email, setEmail]       = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const onRegister = async () => {
     if (!username || !email || !password) {
@@ -106,14 +106,14 @@ export default function Register() {
 }
 
 const styles = StyleSheet.create({
-  container:{ flex:1, justifyContent:'center', padding:24, backgroundColor:'#f8fafc' },
-  brand:{ fontSize:28, fontWeight:'800', textAlign:'center', marginBottom:16, color:'#2563eb' },
-  card:{ backgroundColor:'#fff', borderRadius:14, padding:16, elevation:2, shadowColor:'#000', shadowOpacity:0.06, shadowRadius:8 },
-  label:{ fontWeight:'700', marginTop:8, marginBottom:6 },
-  input:{ borderWidth:1, borderColor:'#e5e7eb', borderRadius:10, paddingHorizontal:12, height:44 },
-  btn:{ marginTop:16, backgroundColor:'#2563eb', borderRadius:10, height:48, alignItems:'center', justifyContent:'center' },
-  btnText:{ color:'#fff', fontWeight:'800' },
-  footerRow:{ flexDirection:'row', justifyContent:'center', gap:8, marginTop:12 },
-  muted:{ color:'#6b7280' },
-  link:{ color:'#2563eb', fontWeight:'700' },
+  container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#f8fafc' },
+  brand: { fontSize: 28, fontWeight: '800', textAlign: 'center', marginBottom: 16, color: '#2563eb' },
+  card: { backgroundColor: '#fff', borderRadius: 14, padding: 16, elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8 },
+  label: { fontWeight: '700', marginTop: 8, marginBottom: 6 },
+  input: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, paddingHorizontal: 12, height: 44 },
+  btn: { marginTop: 16, backgroundColor: '#2563eb', borderRadius: 10, height: 48, alignItems: 'center', justifyContent: 'center' },
+  btnText: { color: '#fff', fontWeight: '800' },
+  footerRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 12 },
+  muted: { color: '#6b7280' },
+  link: { color: '#2563eb', fontWeight: '700' },
 });

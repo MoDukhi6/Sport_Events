@@ -53,7 +53,7 @@ router.get('/live', async (req, res) => {
   }
 });
 
-// 2) Today's fixtures
+// 2) Fixtures by date (includes all match statuses)
 router.get('/fixtures/today', async (req, res) => {
   try {
     const date = req.query.date || new Date().toISOString().slice(0, 10);
@@ -66,23 +66,65 @@ router.get('/fixtures/today', async (req, res) => {
     
     const leagueArray = String(leagues).split(',');
 
+    console.log(`📅 Fetching ALL fixtures for date: ${date}, leagues: ${leagues}`);
+
     const promises = leagueArray.map((leagueId) =>
       api.get('/fixtures', {
         params: {
-          date,
+          date: date,
           league: leagueId.trim(),
+          season: 2025, // Current season
+          timezone: 'UTC',
         },
       })
     );
 
     const results = await Promise.all(promises);
-    const fixtures = results.flatMap((r) => r.data.response || []);
+    let fixtures = results.flatMap((r) => r.data.response || []);
+
+    // If it's today, also get live matches and merge them
+    const today = new Date().toISOString().slice(0, 10);
+    if (date === today) {
+      console.log(`📅 Date is today, fetching live matches too...`);
+      
+      const livePromises = leagueArray.map((leagueId) =>
+        api.get('/fixtures', {
+          params: {
+            live: 'all',
+            league: leagueId.trim(),
+          },
+        })
+      );
+
+      const liveResults = await Promise.all(livePromises);
+      const liveFixtures = liveResults.flatMap((r) => r.data.response || []);
+      
+      console.log(`🔴 Found ${liveFixtures.length} live matches`);
+
+      // Merge live fixtures with scheduled fixtures (avoid duplicates)
+      const fixtureIds = new Set(fixtures.map(f => f.fixture.id));
+      const newLiveFixtures = liveFixtures.filter(f => !fixtureIds.has(f.fixture.id));
+      
+      fixtures = [...liveFixtures, ...fixtures];
+    }
+
+    console.log(`✅ Total fixtures for ${date}: ${fixtures.length}`);
+    
+    // Log sample fixtures for debugging
+    if (fixtures.length > 0) {
+      console.log(`📊 Sample fixtures:`, fixtures.slice(0, 3).map(f => ({
+        home: f.teams.home.name,
+        away: f.teams.away.name,
+        status: f.fixture.status.short,
+        date: f.fixture.date,
+      })));
+    }
 
     res.json(fixtures);
   } catch (err) {
     console.error('❌ football/fixtures/today error:', err.response?.data || err.message);
     res.status(500).json({ 
-      error: 'Failed to load today fixtures',
+      error: 'Failed to load fixtures',
       details: err.response?.data?.message || err.message 
     });
   }

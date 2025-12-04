@@ -2,15 +2,15 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 
-const BASE_URL = 'http://10.0.0.11:4000';
+import { API_BASE_URL } from '../../constants/api';
 
 // Knockout round names for Champions League
 const KNOCKOUT_ROUNDS = [
@@ -59,7 +59,7 @@ export default function KnockoutScreen() {
       try {
         console.log(`Loading ${selectedRound} matches for Champions League ${season}`);
         
-        const url = `${BASE_URL}/api/football/fixtures/round?league=${league}&season=${season}&round=${encodeURIComponent(selectedRound)}`;
+        const url = `${API_BASE_URL}/api/football/fixtures/round?league=${league}&season=${season}&round=${encodeURIComponent(selectedRound)}`;
         
         const res = await fetch(url);
         if (!res.ok) {
