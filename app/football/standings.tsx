@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,21 +12,16 @@ import {
 } from 'react-native';
 import { getLeagueStandings, type LeagueStandings } from '../api/football-api';
 
-// ⚠️ NOTE: Free API plan only has access to seasons 2021-2023
 const AVAILABLE_SEASONS = [2025, 2024, 2023, 2022];
 
 export default function StandingsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ league?: string; name?: string }>();
 
-  // Get league from route params (already selected in previous screen)
   const selectedLeague = params.league ? Number(params.league) : 39;
   const leagueName = params.name ?? 'Premier League';
-
-  // Check if this is Champions League (which has groups)
   const isChampionsLeague = selectedLeague === 2;
 
-  // Default to 2023 season (most recent available in free plan)
   const [selectedSeason, setSelectedSeason] = useState<number>(2025);
   const [standings, setStandings] = useState<LeagueStandings | null>(null);
   const [loading, setLoading] = useState(false);
@@ -38,7 +34,7 @@ export default function StandingsScreen() {
       try {
         console.log(`Loading standings for league ${selectedLeague}, season ${selectedSeason}`);
         const data = await getLeagueStandings(selectedLeague, selectedSeason);
-        
+
         if (!data || !data.standings || data.standings.length === 0) {
           setStandings(null);
           setErrorText(`No standings data for ${selectedSeason} season.`);
@@ -58,19 +54,16 @@ export default function StandingsScreen() {
     load();
   }, [selectedLeague, selectedSeason]);
 
-  // Function to render a single standings table
   const renderStandingsTable = (table: any[], groupIndex: number) => {
-    // For Champions League, determine group letter
-    const groupLetter = String.fromCharCode(65 + groupIndex); // A, B, C, D...
-    
+    const groupLetter = String.fromCharCode(65 + groupIndex);
+
     return (
       <View key={groupIndex} style={styles.tableContainer}>
         {isChampionsLeague && (
           <Text style={styles.groupTitle}>Group {groupLetter}</Text>
         )}
-        
+
         <View style={styles.tableWrapper}>
-          {/* Header */}
           <View style={[styles.row, styles.headerRow]}>
             <Text style={[styles.cell, styles.colRank]}>#</Text>
             <Text style={[styles.cell, styles.colTeam]}>Team</Text>
@@ -81,8 +74,7 @@ export default function StandingsScreen() {
             <Text style={[styles.cell, styles.colMedium]}>F/A</Text>
             <Text style={[styles.cell, styles.colSmall]}>Pts</Text>
           </View>
-          
-          {/* Rows */}
+
           {table.map((item) => (
             <View key={item.team.id} style={styles.row}>
               <Text style={[styles.cell, styles.colRank]}>{item.rank}</Text>
@@ -115,7 +107,6 @@ export default function StandingsScreen() {
   };
 
   const handleViewKnockoutRounds = () => {
-    // Navigate to knockout rounds screen
     router.push({
       pathname: '/football/knockout',
       params: {
@@ -127,75 +118,76 @@ export default function StandingsScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header with league name */}
-      <Text style={styles.title}>{leagueName} Standings</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <Text style={styles.title}>{leagueName} Standings</Text>
 
-      {/* Back button */}
-      <Pressable onPress={() => router.back()} style={styles.backBtn}>
-        <Text style={styles.backText}>‹ Back</Text>
-      </Pressable>
+        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <Text style={styles.backText}>‹ Back</Text>
+        </Pressable>
 
-      {/* Season selector - Only show available seasons (2025, 2024, 2023, 2022) */}
-      <View style={styles.seasonRow}>
-        {AVAILABLE_SEASONS.map((season) => (
-          <Pressable
-            key={season}
-            onPress={() => setSelectedSeason(season)}
-            style={[
-              styles.seasonChip,
-              selectedSeason === season && styles.seasonChipActive,
-            ]}
-          >
-            <Text
+        <View style={styles.seasonRow}>
+          {AVAILABLE_SEASONS.map((season) => (
+            <Pressable
+              key={season}
+              onPress={() => setSelectedSeason(season)}
               style={[
-                styles.seasonChipText,
-                selectedSeason === season && styles.seasonChipTextActive,
+                styles.seasonChip,
+                selectedSeason === season && styles.seasonChipActive,
               ]}
             >
-              {season}/{String(season + 1).slice(-2)}
+              <Text
+                style={[
+                  styles.seasonChipText,
+                  selectedSeason === season && styles.seasonChipTextActive,
+                ]}
+              >
+                {season}/{String(season + 1).slice(-2)}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {isChampionsLeague && !loading && standings && (
+          <Pressable
+            style={styles.knockoutButton}
+            onPress={handleViewKnockoutRounds}
+          >
+            <Text style={styles.knockoutButtonText}>🏆 View Knockout Rounds</Text>
+            <Text style={styles.knockoutButtonSubtext}>
+              Round of 16 • Quarter-Finals • Semi-Finals • Final
             </Text>
           </Pressable>
-        ))}
+        )}
+
+        {loading ? (
+          <ActivityIndicator size="large" color="#2563eb" style={styles.loader} />
+        ) : errorText ? (
+          <Text style={styles.errorText}>{errorText}</Text>
+        ) : standings && standings.standings && standings.standings.length > 0 ? (
+          <ScrollView style={styles.scrollView}>
+            {standings.standings.map((table, index) =>
+              table && table.length > 0 ? renderStandingsTable(table, index) : null
+            )}
+          </ScrollView>
+        ) : (
+          <Text style={styles.errorText}>No standings data available.</Text>
+        )}
       </View>
-
-      {/* Champions League Knockout Button */}
-      {isChampionsLeague && !loading && standings && (
-        <Pressable 
-          style={styles.knockoutButton}
-          onPress={handleViewKnockoutRounds}
-        >
-          <Text style={styles.knockoutButtonText}>🏆 View Knockout Rounds</Text>
-          <Text style={styles.knockoutButtonSubtext}>
-            Round of 16 • Quarter-Finals • Semi-Finals • Final
-          </Text>
-        </Pressable>
-      )}
-
-      {loading ? (
-        <ActivityIndicator size="large" color="#2563eb" style={styles.loader} />
-      ) : errorText ? (
-        <Text style={styles.errorText}>{errorText}</Text>
-      ) : standings && standings.standings && standings.standings.length > 0 ? (
-        <ScrollView style={styles.scrollView}>
-          {standings.standings.map((table, index) => 
-            table && table.length > 0 ? renderStandingsTable(table, index) : null
-          )}
-        </ScrollView>
-      ) : (
-        <Text style={styles.errorText}>No standings data available.</Text>
-      )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+    paddingTop: 8, // 👈 moves content below Dynamic Island
+  },
   container: { flex: 1, backgroundColor: '#fff', padding: 16 },
   title: { fontSize: 22, fontWeight: '700', marginBottom: 8, textAlign: 'center' },
-
   backBtn: { alignSelf: 'flex-start', marginBottom: 8 },
   backText: { color: '#2563eb', fontSize: 16 },
-
   seasonRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -217,15 +209,6 @@ const styles = StyleSheet.create({
   },
   seasonChipText: { fontSize: 14, fontWeight: '600', color: '#333' },
   seasonChipTextActive: { color: '#fff' },
-
-  infoText: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 12,
-    fontStyle: 'italic',
-  },
-
   knockoutButton: {
     backgroundColor: '#059669',
     paddingVertical: 14,
@@ -249,26 +232,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 4,
   },
-
   loader: {
     marginTop: 40,
   },
-
   errorText: {
     marginTop: 20,
     textAlign: 'center',
     color: '#ef4444',
     fontSize: 14,
   },
-
   scrollView: {
     flex: 1,
   },
-
   tableContainer: {
     marginBottom: 24,
   },
-
   groupTitle: {
     fontSize: 18,
     fontWeight: '700',
@@ -278,14 +256,12 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 4,
   },
-
   tableWrapper: {
     borderWidth: 1,
     borderColor: '#e5e7eb',
     borderRadius: 8,
     overflow: 'hidden',
   },
-
   row: {
     flexDirection: 'row',
     paddingVertical: 8,
@@ -300,7 +276,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
   },
   cell: { fontSize: 12, textAlign: 'center' },
-
   colRank: { width: 28, fontWeight: '600' },
   colTeam: { flex: 1, textAlign: 'left', paddingLeft: 8 },
   colSmall: { width: 32 },

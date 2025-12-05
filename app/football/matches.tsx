@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -31,11 +32,10 @@ export default function MatchesScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Get dates for yesterday, today, tomorrow
   const getDate = (offset: number): string => {
     const date = new Date();
     date.setDate(date.getDate() + offset);
-    return date.toISOString().slice(0, 10); // YYYY-MM-DD
+    return date.toISOString().slice(0, 10);
   };
 
   const dates = {
@@ -44,7 +44,6 @@ export default function MatchesScreen() {
     tomorrow: getDate(1),
   };
 
-  // Format date for display
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -54,7 +53,6 @@ export default function MatchesScreen() {
     });
   };
 
-  // Format time for display
   const formatTime = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleTimeString('en-US', {
@@ -63,7 +61,6 @@ export default function MatchesScreen() {
     });
   };
 
-  // Load fixtures for selected tab
   const loadFixtures = async () => {
     if (!numericLeagueId) return;
 
@@ -72,7 +69,6 @@ export default function MatchesScreen() {
       const dateToFetch = dates[selectedTab];
       console.log(`Loading fixtures for ${selectedTab}: ${dateToFetch}`);
 
-      // Fetch fixtures for the selected date
       const response = await fetch(
         `${API_BASE_URL}/api/football/fixtures/today?date=${dateToFetch}&leagues=${numericLeagueId}`
       );
@@ -80,9 +76,8 @@ export default function MatchesScreen() {
 
       setFixtures(data);
 
-      // Extract live matches for display
-      const live = data.filter((f: Fixture) => 
-        f.fixture.status.short === '1H' || 
+      const live = data.filter((f: Fixture) =>
+        f.fixture.status.short === '1H' ||
         f.fixture.status.short === '2H' ||
         f.fixture.status.short === 'HT' ||
         f.fixture.status.short === 'ET' ||
@@ -101,19 +96,17 @@ export default function MatchesScreen() {
     }
   };
 
-  // Load fixtures when tab changes
   useEffect(() => {
     loadFixtures();
   }, [selectedTab, numericLeagueId]);
 
-  // Auto-refresh live matches every 30 seconds when on "today" tab
   useEffect(() => {
     if (selectedTab !== 'today') return;
 
     const interval = setInterval(() => {
       console.log('🔄 Auto-refreshing live matches...');
       loadFixtures();
-    }, 30000); // 30 seconds
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [selectedTab, numericLeagueId]);
@@ -123,27 +116,28 @@ export default function MatchesScreen() {
     loadFixtures();
   };
 
-  // Render a single match card
   const renderMatch = (match: Fixture, index: number) => {
-    const isLive = match.fixture.status.short === '1H' || 
-                   match.fixture.status.short === '2H' ||
-                   match.fixture.status.short === 'HT' ||
-                   match.fixture.status.short === 'ET' ||
-                   match.fixture.status.short === 'P';
-    
-    const isFinished = match.fixture.status.short === 'FT' ||
-                       match.fixture.status.short === 'AET' ||
-                       match.fixture.status.short === 'PEN';
-    
-    const isNotStarted = match.fixture.status.short === 'NS' ||
-                         match.fixture.status.short === 'TBD';
+    const isLive =
+      match.fixture.status.short === '1H' ||
+      match.fixture.status.short === '2H' ||
+      match.fixture.status.short === 'HT' ||
+      match.fixture.status.short === 'ET' ||
+      match.fixture.status.short === 'P';
+
+    const isFinished =
+      match.fixture.status.short === 'FT' ||
+      match.fixture.status.short === 'AET' ||
+      match.fixture.status.short === 'PEN';
+
+    const isNotStarted =
+      match.fixture.status.short === 'NS' ||
+      match.fixture.status.short === 'TBD';
 
     const homeGoals = match.goals.home ?? '-';
     const awayGoals = match.goals.away ?? '-';
 
     return (
       <View key={`match-${match.fixture.id}-${index}`} style={styles.matchCard}>
-        {/* Live badge */}
         {isLive && (
           <View style={styles.liveBadge}>
             <View style={styles.liveIndicator} />
@@ -151,39 +145,38 @@ export default function MatchesScreen() {
           </View>
         )}
 
-        {/* Match time/status */}
         <Text style={styles.matchTime}>
           {isNotStarted ? formatTime(match.fixture.date) : match.fixture.status.long}
         </Text>
 
-        {/* Teams and score */}
         <View style={styles.matchContent}>
-          {/* Home Team */}
           <View style={styles.teamRow}>
             <Text style={styles.teamName}>{match.teams.home.name}</Text>
-            <Text style={[
-              styles.score,
-              isLive && styles.scoreLive,
-              isFinished && styles.scoreFinished,
-            ]}>
+            <Text
+              style={[
+                styles.score,
+                isLive && styles.scoreLive,
+                isFinished && styles.scoreFinished,
+              ]}
+            >
               {homeGoals}
             </Text>
           </View>
 
-          {/* Away Team */}
           <View style={styles.teamRow}>
             <Text style={styles.teamName}>{match.teams.away.name}</Text>
-            <Text style={[
-              styles.score,
-              isLive && styles.scoreLive,
-              isFinished && styles.scoreFinished,
-            ]}>
+            <Text
+              style={[
+                styles.score,
+                isLive && styles.scoreLive,
+                isFinished && styles.scoreFinished,
+              ]}
+            >
               {awayGoals}
             </Text>
           </View>
         </View>
 
-        {/* Match status details */}
         {isLive && (
           <Text style={styles.statusText}>
             {match.fixture.status.elapsed}' - {match.fixture.status.long}
@@ -193,101 +186,98 @@ export default function MatchesScreen() {
     );
   };
 
-  // Backend now returns all fixtures (live + scheduled + finished)
   const displayFixtures = fixtures;
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <Text style={styles.title}>{leagueName} Matches</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <Text style={styles.title}>{leagueName} Matches</Text>
 
-      {/* Back button */}
-      <Pressable onPress={() => router.back()} style={styles.backBtn}>
-        <Text style={styles.backText}>‹ Back</Text>
-      </Pressable>
-
-      {/* Tab selector */}
-      <View style={styles.tabContainer}>
-        <Pressable
-          style={[styles.tab, selectedTab === 'yesterday' && styles.tabActive]}
-          onPress={() => setSelectedTab('yesterday')}
-        >
-          <Text style={[styles.tabText, selectedTab === 'yesterday' && styles.tabTextActive]}>
-            Yesterday
-          </Text>
-          <Text style={[styles.tabDate, selectedTab === 'yesterday' && styles.tabDateActive]}>
-            {formatDate(dates.yesterday)}
-          </Text>
+        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <Text style={styles.backText}>‹ Back</Text>
         </Pressable>
 
-        <Pressable
-          style={[styles.tab, selectedTab === 'today' && styles.tabActive]}
-          onPress={() => setSelectedTab('today')}
-        >
-          <Text style={[styles.tabText, selectedTab === 'today' && styles.tabTextActive]}>
-            Today
-          </Text>
-          <Text style={[styles.tabDate, selectedTab === 'today' && styles.tabDateActive]}>
-            {formatDate(dates.today)}
-          </Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.tab, selectedTab === 'tomorrow' && styles.tabActive]}
-          onPress={() => setSelectedTab('tomorrow')}
-        >
-          <Text style={[styles.tabText, selectedTab === 'tomorrow' && styles.tabTextActive]}>
-            Tomorrow
-          </Text>
-          <Text style={[styles.tabDate, selectedTab === 'tomorrow' && styles.tabDateActive]}>
-            {formatDate(dates.tomorrow)}
-          </Text>
-        </Pressable>
-      </View>
-
-      {/* Live matches count for today */}
-      {selectedTab === 'today' && liveMatches.length > 0 && (
-        <View style={styles.liveCountBanner}>
-          <View style={styles.liveIndicator} />
-          <Text style={styles.liveCountText}>
-            {liveMatches.length} live {liveMatches.length === 1 ? 'match' : 'matches'}
-          </Text>
-        </View>
-      )}
-
-      {/* Fixtures list */}
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {loading && !refreshing ? (
-          <ActivityIndicator size="large" color="#2563eb" style={styles.loader} />
-        ) : displayFixtures.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              No matches found for {selectedTab}
+        <View style={styles.tabContainer}>
+          <Pressable
+            style={[styles.tab, selectedTab === 'yesterday' && styles.tabActive]}
+            onPress={() => setSelectedTab('yesterday')}
+          >
+            <Text style={[styles.tabText, selectedTab === 'yesterday' && styles.tabTextActive]}>
+              Yesterday
             </Text>
-            <Text style={styles.emptySubtext}>
-              Pull down to refresh
+            <Text style={[styles.tabDate, selectedTab === 'yesterday' && styles.tabDateActive]}>
+              {formatDate(dates.yesterday)}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.tab, selectedTab === 'today' && styles.tabActive]}
+            onPress={() => setSelectedTab('today')}
+          >
+            <Text style={[styles.tabText, selectedTab === 'today' && styles.tabTextActive]}>
+              Today
+            </Text>
+            <Text style={[styles.tabDate, selectedTab === 'today' && styles.tabDateActive]}>
+              {formatDate(dates.today)}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.tab, selectedTab === 'tomorrow' && styles.tabActive]}
+            onPress={() => setSelectedTab('tomorrow')}
+          >
+            <Text style={[styles.tabText, selectedTab === 'tomorrow' && styles.tabTextActive]}>
+              Tomorrow
+            </Text>
+            <Text style={[styles.tabDate, selectedTab === 'tomorrow' && styles.tabDateActive]}>
+              {formatDate(dates.tomorrow)}
+            </Text>
+          </Pressable>
+        </View>
+
+        {selectedTab === 'today' && liveMatches.length > 0 && (
+          <View style={styles.liveCountBanner}>
+            <View style={styles.liveIndicator} />
+            <Text style={styles.liveCountText}>
+              {liveMatches.length} live {liveMatches.length === 1 ? 'match' : 'matches'}
             </Text>
           </View>
-        ) : (
-          displayFixtures.map((match, index) => renderMatch(match, index))
         )}
-      </ScrollView>
-    </View>
+
+        <ScrollView
+          style={styles.scrollView}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          {loading && !refreshing ? (
+            <ActivityIndicator size="large" color="#2563eb" style={styles.loader} />
+          ) : displayFixtures.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>
+                No matches found for {selectedTab}
+              </Text>
+              <Text style={styles.emptySubtext}>Pull down to refresh</Text>
+            </View>
+          ) : (
+            displayFixtures.map((match, index) => renderMatch(match, index))
+          )}
+        </ScrollView>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+    paddingTop: 8, // 👈 keeps content away from Dynamic Island
+  },
   container: { flex: 1, backgroundColor: '#f9fafb', padding: 16 },
   title: { fontSize: 22, fontWeight: '700', marginBottom: 8, textAlign: 'center' },
-
   backBtn: { alignSelf: 'flex-start', marginBottom: 12 },
   backText: { color: '#2563eb', fontSize: 16 },
-
   tabContainer: {
     flexDirection: 'row',
     marginBottom: 16,
@@ -322,7 +312,6 @@ const styles = StyleSheet.create({
   tabDateActive: {
     color: '#dbeafe',
   },
-
   liveCountBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -339,15 +328,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#15803d',
   },
-
   scrollView: {
     flex: 1,
   },
-
   loader: {
     marginTop: 40,
   },
-
   emptyContainer: {
     alignItems: 'center',
     marginTop: 60,
@@ -361,7 +347,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#9ca3af',
   },
-
   matchCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -373,7 +358,6 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
-
   liveBadge: {
     position: 'absolute',
     top: 12,
@@ -398,31 +382,26 @@ const styles = StyleSheet.create({
     color: '#15803d',
     letterSpacing: 0.5,
   },
-
   matchTime: {
     fontSize: 12,
     color: '#6b7280',
     marginBottom: 12,
     textAlign: 'center',
   },
-
   matchContent: {
     gap: 10,
   },
-
   teamRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-
   teamName: {
     fontSize: 15,
     fontWeight: '600',
     color: '#111827',
     flex: 1,
   },
-
   score: {
     fontSize: 20,
     fontWeight: '700',
@@ -436,7 +415,6 @@ const styles = StyleSheet.create({
   scoreFinished: {
     color: '#111827',
   },
-
   statusText: {
     fontSize: 12,
     color: '#16a34a',
