@@ -101,69 +101,77 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.emoji}>👤</Text>
-          <Text style={styles.username}>{user.username}</Text>
-          <Text style={styles.points}>Points: {user.points}</Text>
+      <View style={styles.page}>
+        <ScrollView contentContainerStyle={styles.container}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.emoji}>👤</Text>
+            <Text style={styles.username}>{user.username}</Text>
+            {/* changed Points -> Exp */}
+            <Text style={styles.points}>Exp: {user.points}</Text>
+          </View>
 
-          {/* 🔴 LOG OUT BUTTON */}
+          {/* History Title */}
+          <Text style={styles.historyTitle}>History</Text>
+
+          {/* Predictions */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Predictions</Text>
+            {user.predictions.length === 0 ? (
+              <Text style={styles.emptyText}>No predictions yet.</Text>
+            ) : (
+              <FlatList
+                data={user.predictions}
+                keyExtractor={(item) => item._id}
+                scrollEnabled={false}
+                renderItem={({ item }) => (
+                  <View style={styles.card}>
+                    <Text style={styles.cardTitle}>{item.match}</Text>
+                    <Text>Prediction: {item.predictedResult}</Text>
+                    {item.isCorrect !== undefined && (
+                      <Text
+                        style={[
+                          styles.badge,
+                          item.isCorrect ? styles.badgeCorrect : styles.badgeWrong,
+                        ]}
+                      >
+                        {item.isCorrect ? 'Correct ✅' : 'Wrong ❌'}
+                      </Text>
+                    )}
+                  </View>
+                )}
+              />
+            )}
+          </View>
+
+          {/* Bookings */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Bookings</Text>
+            {user.bookings.length === 0 ? (
+              <Text style={styles.emptyText}>No bookings yet.</Text>
+            ) : (
+              <FlatList
+                data={user.bookings}
+                keyExtractor={(item) => item._id}
+                scrollEnabled={false}
+                renderItem={({ item }) => (
+                  <View style={styles.card}>
+                    <Text style={styles.cardTitle}>{item.title}</Text>
+                    <Text>Date: {new Date(item.date).toLocaleString()}</Text>
+                  </View>
+                )}
+              />
+            )}
+          </View>
+        </ScrollView>
+
+        {/* 🔴 LOG OUT BUTTON AT BOTTOM */}
+        <View style={styles.footer}>
           <Pressable style={styles.logoutBtn} onPress={handleLogout}>
             <Text style={styles.logoutText}>Log out</Text>
           </Pressable>
         </View>
-
-        {/* Predictions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Predictions</Text>
-          {user.predictions.length === 0 ? (
-            <Text style={styles.emptyText}>No predictions yet.</Text>
-          ) : (
-            <FlatList
-              data={user.predictions}
-              keyExtractor={(item) => item._id}
-              scrollEnabled={false}
-              renderItem={({ item }) => (
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>{item.match}</Text>
-                  <Text>Prediction: {item.predictedResult}</Text>
-                  {item.isCorrect !== undefined && (
-                    <Text
-                      style={[
-                        styles.badge,
-                        item.isCorrect ? styles.badgeCorrect : styles.badgeWrong,
-                      ]}
-                    >
-                      {item.isCorrect ? 'Correct ✅' : 'Wrong ❌'}
-                    </Text>
-                  )}
-                </View>
-              )}
-            />
-          )}
-        </View>
-
-        {/* Bookings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Bookings</Text>
-          {user.bookings.length === 0 ? (
-            <Text style={styles.emptyText}>No bookings yet.</Text>
-          ) : (
-            <FlatList
-              data={user.bookings}
-              keyExtractor={(item) => item._id}
-              scrollEnabled={false}
-              renderItem={({ item }) => (
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>{item.title}</Text>
-                  <Text>Date: {new Date(item.date).toLocaleString()}</Text>
-                </View>
-              )}
-            />
-          )}
-        </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -172,6 +180,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#ffffff',
+  },
+  page: {
+    flex: 1,
   },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   container: {
@@ -185,9 +196,21 @@ const styles = StyleSheet.create({
   username: { fontSize: 24, fontWeight: '600', marginTop: 8 },
   points: { fontSize: 18, marginTop: 4 },
 
+  historyTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+
   // 🔴 LOG OUT STYLES
+  footer: {
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
+  },
   logoutBtn: {
-    marginTop: 16,
     backgroundColor: '#ef4444',
     borderRadius: 10,
     paddingVertical: 10,
