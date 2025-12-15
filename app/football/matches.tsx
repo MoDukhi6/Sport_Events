@@ -1,20 +1,22 @@
 // app/football/matches.tsx
 import { API_BASE_URL } from '@/constants/api';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { type Fixture } from '../api/football-api';
 
-type TabType = 'yesterday' | 'today' | 'tomorrow';
+type TabType = 'yesterday' | 'today' | 'tomorrow' | 'custom';
 
 export default function MatchesScreen() {
   const router = useRouter();
@@ -31,12 +33,20 @@ export default function MatchesScreen() {
   const [liveMatches, setLiveMatches] = useState<Fixture[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Date picker state
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [customDate, setCustomDate] = useState(new Date());
 
   // --- helpers for dates ---
   const getDate = (offset: number): string => {
     const date = new Date();
     date.setDate(date.getDate() + offset);
     return date.toISOString().slice(0, 10); // YYYY-MM-DD
+  };
+
+  const formatDateToString = (date: Date): string => {
+    return date.toISOString().slice(0, 10);
   };
 
   const dates = {
@@ -63,57 +73,64 @@ export default function MatchesScreen() {
   };
 
   // --- load fixtures ---
-const loadFixtures = async () => {
-  if (!numericLeagueId) return;
+  const loadFixtures = async () => {
+    if (!numericLeagueId) return;
 
-  setLoading(true);
-  try {
-    const dateToFetch = dates[selectedTab];
-    console.log(`Loading fixtures for ${selectedTab}: ${dateToFetch}`);
+    setLoading(true);
+    try {
+      let dateToFetch: string;
 
-    const response = await fetch(
-      `${API_BASE_URL}/api/football/fixtures/today?date=${dateToFetch}&leagues=${numericLeagueId}`
-    );
-    const data: Fixture[] = await response.json();
-
-    // 🔹 Remove duplicates by fixture.id
-    const uniqueMap = new Map<number, Fixture>();
-    for (const f of data) {
-      if (!uniqueMap.has(f.fixture.id)) {
-        uniqueMap.set(f.fixture.id, f);
+      if (selectedTab === 'custom') {
+        dateToFetch = formatDateToString(customDate);
+      } else {
+        dateToFetch = dates[selectedTab];
       }
+
+      console.log(`Loading fixtures for ${selectedTab}: ${dateToFetch}`);
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/football/fixtures/today?date=${dateToFetch}&leagues=${numericLeagueId}`
+      );
+      const data: Fixture[] = await response.json();
+
+      // Remove duplicates by fixture.id
+      const uniqueMap = new Map<number, Fixture>();
+      for (const f of data) {
+        if (!uniqueMap.has(f.fixture.id)) {
+          uniqueMap.set(f.fixture.id, f);
+        }
+      }
+      const uniqueFixtures = Array.from(uniqueMap.values());
+
+      console.log(
+        `Raw fixtures: ${data.length}, unique by fixture.id: ${uniqueFixtures.length}`
+      );
+
+      setFixtures(uniqueFixtures);
+
+      // live matches based on unique list
+      const live = uniqueFixtures.filter(
+        (f) =>
+          f.fixture.status.short === '1H' ||
+          f.fixture.status.short === '2H' ||
+          f.fixture.status.short === 'HT' ||
+          f.fixture.status.short === 'ET' ||
+          f.fixture.status.short === 'P'
+      );
+      setLiveMatches(live);
+    } catch (err) {
+      console.error('Error loading fixtures:', err);
+      setFixtures([]);
+      setLiveMatches([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    const uniqueFixtures = Array.from(uniqueMap.values());
-
-    console.log(
-      `Raw fixtures: ${data.length}, unique by fixture.id: ${uniqueFixtures.length}`
-    );
-
-    setFixtures(uniqueFixtures);
-
-    // live matches based on unique list
-    const live = uniqueFixtures.filter(
-      (f) =>
-        f.fixture.status.short === '1H' ||
-        f.fixture.status.short === '2H' ||
-        f.fixture.status.short === 'HT' ||
-        f.fixture.status.short === 'ET' ||
-        f.fixture.status.short === 'P'
-    );
-    setLiveMatches(live);
-  } catch (err) {
-    console.error('Error loading fixtures:', err);
-    setFixtures([]);
-    setLiveMatches([]);
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-  }
-};
+  };
 
   useEffect(() => {
     loadFixtures();
-  }, [selectedTab, numericLeagueId]);
+  }, [selectedTab, numericLeagueId, customDate]);
 
   // auto-refresh live matches every 30s on "today" tab
   useEffect(() => {
@@ -130,6 +147,19 @@ const loadFixtures = async () => {
   const onRefresh = () => {
     setRefreshing(true);
     loadFixtures();
+  };
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios'); // Keep open on iOS
+    
+    if (selectedDate) {
+      setCustomDate(selectedDate);
+      setSelectedTab('custom');
+    }
+  };
+
+  const openDatePicker = () => {
+    setShowDatePicker(true);
   };
 
   // --- render a single match card ---
@@ -158,6 +188,10 @@ const loadFixtures = async () => {
     const statusLabel = isNotStarted
       ? formatTime(match.fixture.date)
       : match.fixture.status.long;
+
+    const matchName = `${match.teams.home.name} vs ${match.teams.away.name}`;
+    const matchId = match.fixture.id.toString();
+    const matchDate = match.fixture.date;
 
     return (
       <View
@@ -210,6 +244,27 @@ const loadFixtures = async () => {
             {match.fixture.status.elapsed}' • {match.fixture.status.long}
           </Text>
         )}
+
+        {/* Book Seats Buttons - Only show for upcoming matches */}
+        {isNotStarted && (
+          <View style={styles.bookingButtons}>
+            <Pressable
+              style={styles.bookButton}
+              onPress={() => router.push(`/booking/recommendations?matchId=${matchId}&matchName=${encodeURIComponent(matchName)}&matchDate=${encodeURIComponent(matchDate)}`)}
+            >
+              <Text style={styles.bookButtonIcon}>🤖</Text>
+              <Text style={styles.bookButtonText}>AI Picks</Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.bookButton, styles.bookButtonSecondary]}
+              onPress={() => router.push(`/booking/seat-map?matchId=${matchId}&matchName=${encodeURIComponent(matchName)}&matchDate=${encodeURIComponent(matchDate)}`)}
+            >
+              <Text style={styles.bookButtonIcon}>🗺️</Text>
+              <Text style={styles.bookButtonTextSecondary}>Seat Map</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
     );
   };
@@ -217,7 +272,7 @@ const loadFixtures = async () => {
   const displayFixtures = fixtures;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
         {/* header */}
         <Text style={styles.title}>{leagueName} Matches</Text>
@@ -293,7 +348,43 @@ const loadFixtures = async () => {
               {formatDate(dates.tomorrow)}
             </Text>
           </Pressable>
+
+          <Pressable
+            style={[styles.tab, selectedTab === 'custom' && styles.tabActive]}
+            onPress={openDatePicker}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                selectedTab === 'custom' && styles.tabTextActive,
+              ]}
+            >
+              📅 Pick Date
+            </Text>
+            {selectedTab === 'custom' && (
+              <Text
+                style={[
+                  styles.tabDate,
+                  selectedTab === 'custom' && styles.tabDateActive,
+                ]}
+              >
+                {formatDate(formatDateToString(customDate))}
+              </Text>
+            )}
+          </Pressable>
         </View>
+
+        {/* Date Picker */}
+        {showDatePicker && (
+          <DateTimePicker
+            value={customDate}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleDateChange}
+            maximumDate={new Date(2026, 11, 31)} // End of 2026
+            minimumDate={new Date(2024, 0, 1)} // Start of 2024
+          />
+        )}
 
         {/* live count banner */}
         {selectedTab === 'today' && liveMatches.length > 0 && (
@@ -322,7 +413,7 @@ const loadFixtures = async () => {
           ) : displayFixtures.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
-                No matches found for {selectedTab}
+                No matches found for {selectedTab === 'custom' ? formatDate(formatDateToString(customDate)) : selectedTab}
               </Text>
               <Text style={styles.emptySubtext}>Pull down to refresh</Text>
             </View>
@@ -339,7 +430,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#f9fafb',
-    paddingTop: 8, // keep content away from Dynamic Island
   },
   container: { flex: 1, backgroundColor: '#f9fafb', padding: 16 },
   title: {
@@ -470,7 +560,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // NEW layout styles
   matchMainRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -522,5 +611,43 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     marginTop: 8,
+  },
+
+  bookingButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+  },
+  bookButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2563eb',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  bookButtonSecondary: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#2563eb',
+  },
+  bookButtonIcon: {
+    fontSize: 16,
+  },
+  bookButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  bookButtonTextSecondary: {
+    color: '#2563eb',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

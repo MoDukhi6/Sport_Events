@@ -283,4 +283,32 @@ router.get('/fixtures/round', async (req, res) => {
   }
 });
 
+// Get all fixtures for a season
+router.get('/fixtures/season', async (req, res) => {
+  try {
+    const { league, season } = req.query;
+    
+    if (!league || !season) {
+      return res.status(400).json({ error: 'League and season are required' });
+    }
+
+    console.log(`📅 Fetching all fixtures for league ${league}, season ${season}`);
+
+    const response = await api.get('/fixtures', {
+      params: {
+        league,
+        season,
+      },
+    });
+
+    const fixtures = response.data.response || [];
+    console.log(`✅ Found ${fixtures.length} fixtures for season ${season}`);
+    
+    res.json(fixtures);
+  } catch (err) {
+    console.error('❌ Error fetching season fixtures:', err.message);
+    res.status(500).json({ error: 'Failed to fetch season fixtures' });
+  }
+});
+
 module.exports = router;

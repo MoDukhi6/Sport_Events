@@ -2,13 +2,13 @@
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    FlatList,
-    Image,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  FlatList,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 
 import { getLiveMatches, getTodayFixtures, type Fixture } from '../api/football-api';
@@ -323,15 +323,12 @@ function NewsRow({ item }: { item: NewsItem }) {
 function EventRow({ item }: { item: EventItem }) {
   return (
     <View style={styles.eventRow}>
-      <View>
+      <View style={{ flex: 1 }}>
         <Text style={styles.eventTitle}>{item.title}</Text>
         <Text style={styles.eventSub}>{item.day}</Text>
       </View>
       <View style={{ alignItems: 'flex-end' }}>
         <Text style={styles.eventTime}>{item.time}</Text>
-        <Pressable style={styles.bookBtn}>
-          <Text style={styles.bookTxt}>Book</Text>
-        </Pressable>
       </View>
     </View>
   );
@@ -427,11 +424,4 @@ const styles = StyleSheet.create({
   eventTitle: { fontSize: 16, fontWeight: '800' },
   eventSub: { color: '#6b7280', marginTop: 2 },
   eventTime: { color: '#2563eb', fontWeight: '800', marginBottom: 6 },
-  bookBtn: {
-    backgroundColor: '#1f2937',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  bookTxt: { color: 'white', fontWeight: '800' },
 });

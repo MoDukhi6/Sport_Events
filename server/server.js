@@ -18,12 +18,17 @@ const PORT = process.env.PORT || 4000;
 // Import the API-Football routes
 const footballRoutes = require('./football');
 
+// Import booking routes
+const bookingRoutes = require('./routes/booking');
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 
 // Mount football routes
 app.use('/api/football', footballRoutes);
+// Mount booking routes
+app.use('/api/booking', bookingRoutes);
 
 // MongoDB connection
 async function connectDB() {
