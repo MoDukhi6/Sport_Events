@@ -1,10 +1,12 @@
 // app/football/matches.tsx
 import { API_BASE_URL } from '@/constants/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Platform,
   Pressable,
   RefreshControl,
@@ -15,6 +17,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { type Fixture } from '../api/football-api';
+import PredictionModal from '../prediction/PredictionModal';
+import ScorePredictionModal from '../prediction/ScorePredictionModal';
 
 type TabType = 'yesterday' | 'today' | 'tomorrow' | 'custom';
 
@@ -33,10 +37,25 @@ export default function MatchesScreen() {
   const [liveMatches, setLiveMatches] = useState<Fixture[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [userPredictions, setUserPredictions] = useState<Set<string>>(new Set());
   
   // Date picker state
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [customDate, setCustomDate] = useState(new Date());
+  const [tempDate, setTempDate] = useState(new Date()); // For iOS confirmation
+
+  // AI Prediction modal state
+  const [showPrediction, setShowPrediction] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState<{id: string, name: string} | null>(null);
+
+  // Score prediction modal state
+  const [showScorePrediction, setShowScorePrediction] = useState(false);
+  const [selectedMatchForPrediction, setSelectedMatchForPrediction] = useState<{
+    id: string;
+    homeTeam: { id: number; name: string };
+    awayTeam: { id: number; name: string };
+    date: string;
+  } | null>(null);
 
   // --- helpers for dates ---
   const getDate = (offset: number): string => {
@@ -70,6 +89,25 @@ export default function MatchesScreen() {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  // Load user predictions
+  const loadUserPredictions = async () => {
+    try {
+      const userStr = await AsyncStorage.getItem('user');
+      if (!userStr) return;
+
+      const user = JSON.parse(userStr);
+      const response = await fetch(`${API_BASE_URL}/api/user-predictions/user/${user._id}`);
+      
+      if (response.ok) {
+        const predictions = await response.json();
+        const matchIds = new Set<string>(predictions.map((p: any) => String(p.matchId)));
+        setUserPredictions(matchIds);
+      }
+    } catch (err) {
+      console.error('Error loading user predictions:', err);
+    }
   };
 
   // --- load fixtures ---
@@ -132,6 +170,10 @@ export default function MatchesScreen() {
     loadFixtures();
   }, [selectedTab, numericLeagueId, customDate]);
 
+  useEffect(() => {
+    loadUserPredictions();
+  }, []);
+
   // auto-refresh live matches every 30s on "today" tab
   useEffect(() => {
     if (selectedTab !== 'today') return;
@@ -150,16 +192,67 @@ export default function MatchesScreen() {
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(Platform.OS === 'ios'); // Keep open on iOS
-    
-    if (selectedDate) {
-      setCustomDate(selectedDate);
-      setSelectedTab('custom');
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+      if (selectedDate && event.type !== 'dismissed') {
+        setCustomDate(selectedDate);
+        setSelectedTab('custom');
+      }
+    } else if (Platform.OS === 'ios') {
+      // On iOS, just update temp date, user will confirm
+      if (selectedDate) {
+        setTempDate(selectedDate);
+      }
     }
   };
 
+  const confirmIOSDate = () => {
+    setCustomDate(tempDate);
+    setSelectedTab('custom');
+    setShowDatePicker(false);
+  };
+
+  const cancelIOSDate = () => {
+    setShowDatePicker(false);
+    setTempDate(customDate); // Reset to previous date
+  };
+
   const openDatePicker = () => {
-    setShowDatePicker(true);
+    if (Platform.OS === 'web') {
+      // On web, create a native HTML date input
+      const input = document.createElement('input');
+      input.type = 'date';
+      input.value = formatDateToString(customDate);
+      input.max = '2026-12-31';
+      input.min = '2024-01-01';
+      input.style.position = 'absolute';
+      input.style.opacity = '0';
+      document.body.appendChild(input);
+      
+      input.onchange = (e) => {
+        const target = e.target as HTMLInputElement;
+        if (target.value) {
+          const newDate = new Date(target.value);
+          setCustomDate(newDate);
+          setSelectedTab('custom');
+        }
+        document.body.removeChild(input);
+      };
+      
+      input.onblur = () => {
+        setTimeout(() => {
+          if (document.body.contains(input)) {
+            document.body.removeChild(input);
+          }
+        }, 100);
+      };
+      
+      input.click();
+    } else {
+      // Native (iOS/Android)
+      setTempDate(customDate); // Initialize with current custom date
+      setShowDatePicker(true);
+    }
   };
 
   // --- render a single match card ---
@@ -192,6 +285,7 @@ export default function MatchesScreen() {
     const matchName = `${match.teams.home.name} vs ${match.teams.away.name}`;
     const matchId = match.fixture.id.toString();
     const matchDate = match.fixture.date;
+    const hasUserPredicted = userPredictions.has(matchId);
 
     return (
       <View
@@ -245,24 +339,75 @@ export default function MatchesScreen() {
           </Text>
         )}
 
-        {/* Book Seats Buttons - Only show for upcoming matches */}
+        {/* Book Seats & Prediction Buttons - Only show for upcoming matches */}
         {isNotStarted && (
-          <View style={styles.bookingButtons}>
-            <Pressable
-              style={styles.bookButton}
-              onPress={() => router.push(`/booking/recommendations?matchId=${matchId}&matchName=${encodeURIComponent(matchName)}&matchDate=${encodeURIComponent(matchDate)}`)}
-            >
-              <Text style={styles.bookButtonIcon}>🤖</Text>
-              <Text style={styles.bookButtonText}>AI Picks</Text>
-            </Pressable>
+          <View style={styles.bookingButtonsContainer}>
+            {/* First Row: Booking Buttons */}
+            <View style={styles.bookingRow}>
+              <Pressable
+                style={styles.bookButtonWide}
+                onPress={() => router.push(`/booking/recommendations?matchId=${matchId}&matchName=${encodeURIComponent(matchName)}&matchDate=${encodeURIComponent(matchDate)}`)}
+              >
+                <Text style={styles.bookButtonIcon}>🤖</Text>
+                <Text style={styles.bookButtonText}>AI Seat Picks</Text>
+              </Pressable>
 
-            <Pressable
-              style={[styles.bookButton, styles.bookButtonSecondary]}
-              onPress={() => router.push(`/booking/seat-map?matchId=${matchId}&matchName=${encodeURIComponent(matchName)}&matchDate=${encodeURIComponent(matchDate)}`)}
-            >
-              <Text style={styles.bookButtonIcon}>🗺️</Text>
-              <Text style={styles.bookButtonTextSecondary}>Seat Map</Text>
-            </Pressable>
+              <Pressable
+                style={[styles.bookButtonWide, styles.bookButtonSecondaryWide]}
+                onPress={() => router.push(`/booking/seat-map?matchId=${matchId}&matchName=${encodeURIComponent(matchName)}&matchDate=${encodeURIComponent(matchDate)}`)}
+              >
+                <Text style={styles.bookButtonIcon}>🗺️</Text>
+                <Text style={styles.bookButtonTextSecondary}>Stadium Map</Text>
+              </Pressable>
+            </View>
+
+            {/* Second Row: Prediction Buttons */}
+            <View style={styles.predictionRow}>
+              <Pressable
+                style={[
+                  styles.bookButtonWide,
+                  styles.bookButtonGame,
+                  hasUserPredicted && { opacity: 0.6 }
+                ]}
+                onPress={() => {
+                  // Check if already predicted
+                  if (hasUserPredicted) {
+                    Alert.alert(
+                      'Already Predicted',
+                      'You have already made a prediction for this match. You cannot change your prediction.',
+                      [{ text: 'OK' }]
+                    );
+                    return;
+                  }
+
+                  setSelectedMatchForPrediction({
+                    id: matchId,
+                    homeTeam: { id: match.teams.home.id, name: match.teams.home.name },
+                    awayTeam: { id: match.teams.away.id, name: match.teams.away.name },
+                    date: matchDate,
+                  });
+                  setShowScorePrediction(true);
+                }}
+              >
+                <Text style={styles.bookButtonIcon}>
+                  {hasUserPredicted ? '✓' : '🎮'}
+                </Text>
+                <Text style={styles.bookButtonTextGame}>
+                  {hasUserPredicted ? 'Predicted' : 'Predict Score'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.bookButtonWide, styles.bookButtonPrediction]}
+                onPress={() => {
+                  setSelectedMatch({ id: matchId, name: matchName });
+                  setShowPrediction(true);
+                }}
+              >
+                <Text style={styles.bookButtonIcon}>📊</Text>
+                <Text style={styles.bookButtonTextPrediction}>ML Analysis</Text>
+              </Pressable>
+            </View>
           </View>
         )}
       </View>
@@ -375,15 +520,41 @@ export default function MatchesScreen() {
         </View>
 
         {/* Date Picker */}
-        {showDatePicker && (
-          <DateTimePicker
-            value={customDate}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={handleDateChange}
-            maximumDate={new Date(2026, 11, 31)} // End of 2026
-            minimumDate={new Date(2024, 0, 1)} // Start of 2024
-          />
+        {showDatePicker && Platform.OS !== 'web' && (
+          <>
+            {Platform.OS === 'ios' && (
+              <View style={styles.iosDatePickerContainer}>
+                <View style={styles.iosDatePickerHeader}>
+                  <Pressable onPress={cancelIOSDate} style={styles.iosDatePickerButton}>
+                    <Text style={styles.iosDatePickerCancelText}>Cancel</Text>
+                  </Pressable>
+                  <Text style={styles.iosDatePickerTitle}>Select Date</Text>
+                  <Pressable onPress={confirmIOSDate} style={styles.iosDatePickerButton}>
+                    <Text style={styles.iosDatePickerDoneText}>Done</Text>
+                  </Pressable>
+                </View>
+                <DateTimePicker
+                  value={tempDate}
+                  mode="date"
+                  display="spinner"
+                  onChange={handleDateChange}
+                  maximumDate={new Date(2026, 11, 31)}
+                  minimumDate={new Date(2024, 0, 1)}
+                />
+              </View>
+            )}
+            
+            {Platform.OS === 'android' && (
+              <DateTimePicker
+                value={customDate}
+                mode="date"
+                display="default"
+                onChange={handleDateChange}
+                maximumDate={new Date(2026, 11, 31)}
+                minimumDate={new Date(2024, 0, 1)}
+              />
+            )}
+          </>
         )}
 
         {/* live count banner */}
@@ -421,6 +592,38 @@ export default function MatchesScreen() {
             displayFixtures.map((match, index) => renderMatch(match, index))
           )}
         </ScrollView>
+
+        {/* AI Prediction Modal */}
+        {showPrediction && selectedMatch && (
+          <PredictionModal
+            visible={showPrediction}
+            matchId={selectedMatch.id}
+            matchName={selectedMatch.name}
+            onClose={() => {
+              setShowPrediction(false);
+              setSelectedMatch(null);
+            }}
+          />
+        )}
+
+        {/* Score Prediction Modal */}
+        {showScorePrediction && selectedMatchForPrediction && (
+          <ScorePredictionModal
+            visible={showScorePrediction}
+            matchId={selectedMatchForPrediction.id}
+            homeTeam={selectedMatchForPrediction.homeTeam}
+            awayTeam={selectedMatchForPrediction.awayTeam}
+            matchDate={selectedMatchForPrediction.date}
+            onClose={() => {
+              setShowScorePrediction(false);
+              setSelectedMatchForPrediction(null);
+            }}
+            onSuccess={() => {
+              console.log('🎉 Prediction submitted successfully!');
+              loadUserPredictions(); // Reload predictions to update button
+            }}
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -475,6 +678,45 @@ const styles = StyleSheet.create({
   },
   tabDateActive: {
     color: '#dbeafe',
+  },
+
+  // iOS Date Picker Styles
+  iosDatePickerContainer: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    marginTop: 12,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  iosDatePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    backgroundColor: '#f9fafb',
+  },
+  iosDatePickerButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  iosDatePickerCancelText: {
+    fontSize: 16,
+    color: '#ef4444',
+    fontWeight: '600',
+  },
+  iosDatePickerDoneText: {
+    fontSize: 16,
+    color: '#2563eb',
+    fontWeight: '600',
+  },
+  iosDatePickerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
   },
 
   liveCountBanner: {
@@ -613,29 +855,47 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
-  bookingButtons: {
-    flexDirection: 'row',
-    gap: 8,
+  // NEW: 2-Row Button Layout
+  bookingButtonsContainer: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#f3f4f6',
+    gap: 8,
   },
-  bookButton: {
+  bookingRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  predictionRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  bookButtonWide: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#2563eb',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 8,
     gap: 6,
   },
-  bookButtonSecondary: {
+  bookButtonSecondaryWide: {
     backgroundColor: '#fff',
     borderWidth: 2,
     borderColor: '#2563eb',
+  },
+  bookButtonGame: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#10b981',
+  },
+  bookButtonPrediction: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#f59e0b',
   },
   bookButtonIcon: {
     fontSize: 16,
@@ -647,6 +907,16 @@ const styles = StyleSheet.create({
   },
   bookButtonTextSecondary: {
     color: '#2563eb',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  bookButtonTextGame: {
+    color: '#10b981',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  bookButtonTextPrediction: {
+    color: '#f59e0b',
     fontSize: 13,
     fontWeight: '700',
   },

@@ -39,11 +39,28 @@ export default function Login() {
         throw new Error(data?.message || 'Login failed');
       }
 
-      // Save userId & username so Profile screen can load data
+      const userObject = {
+        _id: data.userId,
+        username: data.username,
+        email: email,
+        gameStats: {
+          totalPoints: 0,
+          level: 1,
+          totalPredictions: 0,
+          perfectPredictions: 0,
+          correctWinners: 0,
+          currentStreak: 0,
+          longestStreak: 0,
+        },
+      };
+
+      await AsyncStorage.setItem('user', JSON.stringify(userObject));
+      
+      // Keep these for backward compatibility with other screens
       await AsyncStorage.setItem('@userId', data.userId);
       await AsyncStorage.setItem('@username', data.username);
 
-      router.replace('/(tabs)/home');
+      router.replace('/(tabs)/home' as any);
     } catch (e: any) {
       Alert.alert('Login failed', e?.message ?? 'Please try again');
     } finally {

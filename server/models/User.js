@@ -22,6 +22,38 @@ const userSchema = new mongoose.Schema(
         date: Date,
       },
     ],
+
+    // Game Stats for Prediction Game
+    gameStats: {
+      totalPoints: {
+        type: Number,
+        default: 0,
+      },
+      level: {
+        type: Number,
+        default: 1,
+      },
+      totalPredictions: {
+        type: Number,
+        default: 0,
+      },
+      perfectPredictions: {
+        type: Number,
+        default: 0,
+      },
+      correctWinners: {
+        type: Number,
+        default: 0,
+      },
+      currentStreak: {
+        type: Number,
+        default: 0,
+      },
+      longestStreak: {
+        type: Number,
+        default: 0,
+      },
+    },
   },
   { timestamps: true }
 );

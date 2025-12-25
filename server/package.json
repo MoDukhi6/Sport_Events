@@ -12,6 +12,8 @@
   "description": "",
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-backend-cpu": "^4.22.0",
     "axios": "^1.13.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",

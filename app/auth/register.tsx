@@ -1,4 +1,5 @@
 // app/auth/register.tsx
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -39,11 +40,32 @@ export default function Register() {
         throw new Error(data?.message || 'Registration failed');
       }
 
-      Alert.alert('Success', 'Account created successfully', [
+      // 🔧 NEW: Save user data immediately after registration
+      const userObject = {
+        _id: data.userId,
+        username: data.username || username,
+        email: email,
+        gameStats: {
+          totalPoints: 0,
+          level: 1,
+          totalPredictions: 0,
+          perfectPredictions: 0,
+          correctWinners: 0,
+          currentStreak: 0,
+          longestStreak: 0,
+        },
+      };
+
+      await AsyncStorage.setItem('user', JSON.stringify(userObject));
+      await AsyncStorage.setItem('@userId', data.userId);
+      await AsyncStorage.setItem('@username', data.username || username);
+
+      // Auto-login and redirect to home
+      Alert.alert('Success', 'Account created successfully!', [
         {
           text: 'OK',
           onPress: () => {
-            router.replace('/auth/login');
+            router.replace('/(tabs)/home' as any);
           },
         },
       ]);

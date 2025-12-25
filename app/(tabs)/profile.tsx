@@ -1,13 +1,13 @@
 // app/(tabs)/profile.tsx
 import { API_BASE_URL } from '@/constants/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,65 +15,85 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+type User = {
+  _id: string;
+  username: string;
+  email: string;
+  gameStats?: {
+    totalPoints: number;
+    level: number;
+    totalPredictions: number;
+    perfectPredictions: number;
+    correctWinners: number;
+    currentStreak: number;
+    longestStreak: number;
+  };
+  bookings?: Array<{ title: string; date: Date }>;
+};
+
+type GameStats = {
+  totalPoints: number;
+  level: number;
+  totalPredictions: number;
+  perfectPredictions: number;
+  correctWinners: number;
+  currentStreak: number;
+  longestStreak: number;
+  badge: {
+    name: string;
+    icon: string;
+    color: string;
+  };
+  successRate: number;
+  pointsToNextLevel: number;
+};
+
 export default function ProfileScreen() {
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [gameStats, setGameStats] = useState<GameStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [username, setUsername] = useState('');
-  const [totalBookings, setTotalBookings] = useState(0);
-  const [satisfactionScore, setSatisfactionScore] = useState(0);
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    loadProfile();
+    loadUserData();
   }, []);
 
-  // Refresh profile when screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      loadProfile();
-    }, [])
-  );
-
-  const loadProfile = async () => {
+  const loadUserData = async () => {
     try {
       setLoading(true);
-      const storedUsername = await AsyncStorage.getItem('@username');
-      const userId = await AsyncStorage.getItem('@userId');
-      
-      if (storedUsername) {
-        setUsername(storedUsername);
+      const userStr = await AsyncStorage.getItem('user');
+      if (userStr) {
+        const userData = JSON.parse(userStr);
+        setUser(userData);
+        await loadGameStats(userData._id);
       }
-
-      if (userId) {
-        // Fetch user's bookings
-        const response = await fetch(`${API_BASE_URL}/api/booking/history/${userId}`);
-        const data = await response.json();
-        
-        if (response.ok) {
-          setBookings(data.bookings);
-          setTotalBookings(data.totalBookings);
-          
-          // Calculate satisfaction score based on match scores
-          if (data.bookings.length > 0) {
-            const avgScore = Math.round(
-              data.bookings.reduce((sum: number, b: any) => sum + (b.matchScore || 0), 0) / 
-              data.bookings.length
-            );
-            setSatisfactionScore(avgScore || 50);
-          } else {
-            setSatisfactionScore(50);
-          }
-        }
-      }
-      
     } catch (err) {
-      console.error('Error loading profile:', err);
+      console.error('Error loading user:', err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const handleLogout = async () => {
+  const loadGameStats = async (userId: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/user-predictions/stats/${userId}`);
+      if (response.ok) {
+        const stats = await response.json();
+        setGameStats(stats);
+      }
+    } catch (err) {
+      console.error('Error loading game stats:', err);
+    }
+  };
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadUserData();
+  }, []);
+
+  const handleLogout = () => {
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
@@ -83,142 +103,173 @@ export default function ProfileScreen() {
           text: 'Logout',
           style: 'destructive',
           onPress: async () => {
-            await AsyncStorage.removeItem('@userId');
-            await AsyncStorage.removeItem('@username');
-            router.replace('/auth/login');
+            await AsyncStorage.removeItem('user');
+            router.replace('/auth/login' as any);
           },
         },
       ]
     );
   };
 
+  const getBadgeStyle = (color: string) => {
+    return {
+      backgroundColor: color + '20',
+      borderColor: color,
+    };
+  };
+
+  const getBadgeTextStyle = (color: string) => {
+    return { color };
+  };
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#2563eb" />
-        <Text style={styles.loadingText}>Loading profile...</Text>
       </View>
     );
   }
 
+  if (!user) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>Please login to view profile</Text>
+        <Pressable style={styles.loginButton} onPress={() => router.replace('/auth/login' as any)}>
+          <Text style={styles.loginButtonText}>Go to Login</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const stats = gameStats || {
+    totalPoints: 0,
+    level: 1,
+    totalPredictions: 0,
+    perfectPredictions: 0,
+    correctWinners: 0,
+    currentStreak: 0,
+    longestStreak: 0,
+    badge: { name: 'Beginner', icon: '🎮', color: '#10b981' },
+    successRate: 0,
+    pointsToNextLevel: 20,
+  };
+
+  const progressPercentage = ((stats.totalPoints % 20) / 20) * 100;
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView style={styles.container}>
-        {/* Profile Header */}
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {/* Header */}
         <View style={styles.header}>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {username.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          </View>
-          <Text style={styles.username}>{username}</Text>
-        </View>
-
-        {/* Booking Stats */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📊 Booking Statistics</Text>
-          
-          <View style={styles.statsCard}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{totalBookings}</Text>
-              <Text style={styles.statLabel}>Total Bookings</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: '#16a34a' }]}>
-                {satisfactionScore}%
-              </Text>
-              <Text style={styles.statLabel}>Satisfaction</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Booking History */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📜 Booking History</Text>
-          
-          {totalBookings === 0 ? (
-            <View style={styles.emptyHistoryCard}>
-              <Text style={styles.emptyIcon}>🎟️</Text>
-              <Text style={styles.emptyHistoryTitle}>No bookings yet</Text>
-              <Text style={styles.emptyHistorySubtext}>
-                Your booking history will appear here
-              </Text>
-            </View>
-          ) : (
-            bookings.map((booking) => (
-              <View key={booking._id} style={styles.bookingCard}>
-                <View style={styles.bookingHeader}>
-                  <Text style={styles.bookingMatch}>{booking.matchName}</Text>
-                  <Text style={styles.bookingPrice}>£{booking.price}</Text>
-                </View>
-
-                {booking.matchDate && (
-                  <View style={styles.matchDateContainer}>
-                    <Text style={styles.matchDateIcon}>📅</Text>
-                    <Text style={styles.matchDateText}>
-                      {new Date(booking.matchDate).toLocaleDateString('en-US', {
-                        weekday: 'short',
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })} at {new Date(booking.matchDate).toLocaleTimeString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </Text>
-                  </View>
-                )}
-                
-                <View style={styles.bookingDetails}>
-                  <Text style={styles.bookingDetailText}>
-                    Section {booking.section} • Row {booking.row} • Seat {booking.seatNumber}
-                  </Text>
-                  {booking.matchScore > 0 && (
-                    <Text style={styles.bookingMatchScore}>
-                      {booking.matchScore}% Match
-                    </Text>
-                  )}
-                </View>
-                
-                <Text style={styles.bookingDate}>
-                  Booked: {new Date(booking.bookingDate).toLocaleDateString()}
-                </Text>
-              </View>
-            ))
-          )}
-        </View>
-
-        {/* AI Preferences */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🤖 AI Preferences</Text>
-          
-          <Pressable
-            style={styles.preferenceCard}
-            onPress={() => router.push('/booking/preferences')}
-          >
-            <View style={styles.preferenceContent}>
-              <Text style={styles.preferenceIcon}>⚙️</Text>
-              <View style={styles.preferenceText}>
-                <Text style={styles.preferenceTitle}>Seating Preferences</Text>
-                <Text style={styles.preferenceSubtext}>
-                  Customize your AI recommendations
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.arrow}>›</Text>
+          <Text style={styles.title}>Profile</Text>
+          <Pressable onPress={handleLogout} style={styles.logoutButton}>
+            <Text style={styles.logoutText}>Logout</Text>
           </Pressable>
         </View>
 
-        {/* Account Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>⚙️ Account</Text>
+        {/* User Info Card */}
+        <View style={styles.userCard}>
+          <View style={styles.avatarContainer}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{user.username.charAt(0).toUpperCase()}</Text>
+            </View>
+            {/* Badge */}
+            <View style={[styles.badge, getBadgeStyle(stats.badge.color)]}>
+              <Text style={styles.badgeIcon}>{stats.badge.icon}</Text>
+              <Text style={[styles.badgeText, getBadgeTextStyle(stats.badge.color)]}>
+                {stats.badge.name}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.userInfo}>
+            <Text style={styles.username}>{user.username}</Text>
+            <Text style={styles.email}>{user.email}</Text>
+          </View>
+        </View>
+
+        {/* Level & XP Card */}
+        <View style={styles.levelCard}>
+          <View style={styles.levelHeader}>
+            <View>
+              <Text style={styles.levelTitle}>Level {stats.level}</Text>
+              <Text style={styles.levelSubtitle}>{stats.totalPoints} XP</Text>
+            </View>
+            <View style={styles.pointsBadge}>
+              <Text style={styles.pointsBadgeText}>⭐ {stats.totalPoints}</Text>
+            </View>
+          </View>
+
+          {/* Progress Bar */}
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: `${progressPercentage}%` }]} />
+            </View>
+            <Text style={styles.progressText}>
+              {stats.pointsToNextLevel} XP to Level {stats.level + 1}
+            </Text>
+          </View>
+        </View>
+
+        {/* Streaks Card - Simplified */}
+        <View style={styles.streaksCard}>
+          <Text style={styles.sectionTitle}>🔥 Predictions Streaks</Text>
           
-          <Pressable style={styles.actionCard} onPress={handleLogout}>
-            <Text style={styles.actionIcon}>🚪</Text>
-            <Text style={styles.actionText}>Logout</Text>
+          <View style={styles.streaksRow}>
+            <View style={styles.streakItem}>
+              <Text style={styles.streakIcon}>⚡</Text>
+              <View style={styles.streakInfo}>
+                <Text style={styles.streakLabel}>Current Streak</Text>
+                <Text style={styles.streakValue}>{stats.currentStreak}</Text>
+              </View>
+            </View>
+
+            <View style={styles.streakDivider} />
+
+            <View style={styles.streakItem}>
+              <Text style={styles.streakIcon}>🏆</Text>
+              <View style={styles.streakInfo}>
+                <Text style={styles.streakLabel}>Longest Streak</Text>
+                <Text style={styles.streakValue}>{stats.longestStreak}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.actionsCard}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+
+          <Pressable
+            style={styles.actionButton}
+            onPress={() => router.push('/game/my-predictions' as any)}
+          >
+            <Text style={styles.actionIcon}>📜</Text>
+            <Text style={styles.actionText}>My Predictions</Text>
+            <Text style={styles.actionArrow}>›</Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.actionButton}
+            onPress={() => router.push('/game/leaderboard' as any)}
+          >
+            <Text style={styles.actionIcon}>🏆</Text>
+            <Text style={styles.actionText}>Leaderboard</Text>
+            <Text style={styles.actionArrow}>›</Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.actionButton}
+            onPress={() => router.push('/booking/my-bookings' as any)}
+          >
+            <Text style={styles.actionIcon}>🎫</Text>
+            <Text style={styles.actionText}>My Bookings</Text>
+            <Text style={styles.actionArrow}>›</Text>
           </Pressable>
         </View>
 
@@ -235,28 +286,62 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    padding: 16,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f9fafb',
+    padding: 24,
   },
-  loadingText: {
-    marginTop: 16,
+  errorText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
+    color: '#6b7280',
+    marginBottom: 16,
+  },
+  loginButton: {
+    backgroundColor: '#2563eb',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
   },
   header: {
-    backgroundColor: '#fff',
-    paddingTop: 20,
-    paddingBottom: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  logoutButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#fee2e2',
+  },
+  logoutText: {
+    color: '#dc2626',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  userCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    alignItems: 'center',
   },
   avatarContainer: {
+    alignItems: 'center',
     marginBottom: 16,
   },
   avatar: {
@@ -266,199 +351,163 @@ const styles = StyleSheet.create({
     backgroundColor: '#2563eb',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 12,
   },
   avatarText: {
     fontSize: 36,
     fontWeight: '700',
     color: '#fff',
   },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 2,
+    gap: 6,
+  },
+  badgeIcon: {
+    fontSize: 16,
+  },
+  badgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  userInfo: {
+    alignItems: 'center',
+  },
   username: {
     fontSize: 24,
     fontWeight: '700',
     color: '#111827',
+    marginBottom: 4,
   },
-  section: {
-    marginTop: 24,
+  email: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  levelCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+  },
+  levelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  levelTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  levelSubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: 4,
+  },
+  pointsBadge: {
+    backgroundColor: '#fef3c7',
+    paddingVertical: 8,
     paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  pointsBadgeText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#f59e0b',
+  },
+  progressContainer: {
+    gap: 8,
+  },
+  progressBar: {
+    height: 12,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#10b981',
+    borderRadius: 6,
+  },
+  progressText: {
+    fontSize: 13,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  streaksCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  statsCard: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 12,
+  streaksRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  statItem: {
+  streakItem: {
     flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#2563eb',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  statDivider: {
-    width: 1,
-    height: 50,
-    backgroundColor: '#e5e7eb',
-    marginHorizontal: 20,
-  },
-  emptyHistoryCard: {
-    backgroundColor: '#fff',
-    padding: 32,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
-  emptyHistoryTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  emptyHistorySubtext: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-  },
-  historyCard: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 12,
-  },
-  historyPlaceholder: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-  },
-  bookingCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#2563eb',
-  },
-  bookingHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  bookingMatch: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    flex: 1,
-  },
-  matchDateContainer: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  marginBottom: 8,
-  backgroundColor: '#eff6ff',
-  padding: 8,
-  borderRadius: 8,
-},
-matchDateIcon: {
-  fontSize: 16,
-  marginRight: 6,
-},
-matchDateText: {
-  fontSize: 13,
-  fontWeight: '600',
-  color: '#1e40af',
-},
-  bookingPrice: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#2563eb',
-  },
-  bookingDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  bookingDetailText: {
-    fontSize: 14,
-    color: '#6b7280',
-    flex: 1,
-  },
-  bookingMatchScore: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#16a34a',
-    backgroundColor: '#dcfce7',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  bookingDate: {
-    fontSize: 12,
-    color: '#9ca3af',
-  },
-  preferenceCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 12,
   },
-  preferenceContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  streakIcon: {
+    fontSize: 36,
+  },
+  streakInfo: {
     flex: 1,
   },
-  preferenceIcon: {
-    fontSize: 32,
-    marginRight: 12,
-  },
-  preferenceText: {
-    flex: 1,
-  },
-  preferenceTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  preferenceSubtext: {
+  streakLabel: {
     fontSize: 13,
     color: '#6b7280',
+    marginBottom: 4,
   },
-  arrow: {
-    fontSize: 24,
-    color: '#9ca3af',
+  streakValue: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#111827',
   },
-  actionCard: {
+  streakDivider: {
+    width: 1,
+    height: 60,
+    backgroundColor: '#e5e7eb',
+    marginHorizontal: 16,
+  },
+  actionsCard: {
     backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+  },
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
   actionIcon: {
     fontSize: 24,
-    marginRight: 12,
+    marginRight: 16,
   },
   actionText: {
+    flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    color: '#ef4444',
+    color: '#111827',
+  },
+  actionArrow: {
+    fontSize: 24,
+    color: '#9ca3af',
   },
 });

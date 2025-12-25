@@ -1,5 +1,6 @@
 // app/booking/seat-map.tsx
 import { API_BASE_URL } from '@/constants/api';
+import { saveBooking } from '@/utils/bookingStorage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -101,7 +102,7 @@ export default function SeatMapScreen() {
                 return;
               }
 
-              // Save booking
+              // Save to backend database
               const response = await fetch(
                 `${API_BASE_URL}/api/booking/create/${userId}`,
                 {
@@ -123,13 +124,27 @@ export default function SeatMapScreen() {
               const data = await response.json();
 
               if (response.ok) {
+                // Also save to AsyncStorage for quick access
+                const userId = await AsyncStorage.getItem('@userId');
+                if (userId) {
+                  await saveBooking({
+                    matchId: params.matchId || 'mock-match',
+                    matchName: matchName,
+                    matchDate: params.matchDate || new Date().toISOString(),
+                    seatSection: selectedSeat.section,
+                    seatNumber: selectedSeat.number.toString(),
+                    price: `£${selectedSeat.price}`,
+                    bookedAt: new Date().toISOString(),
+                  }, userId);
+                }
+
                 Alert.alert(
                   'Booking Confirmed! 🎉',
                   'Your seat has been booked successfully.',
                   [
                     {
-                      text: 'View in Profile',
-                      onPress: () => router.push('/(tabs)/profile'),
+                      text: 'View Bookings',
+                      onPress: () => router.push('/booking/my-bookings' as any),
                     },
                     { text: 'OK', style: 'default' },
                   ]

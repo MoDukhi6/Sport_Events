@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const axios = require('axios');
 
 const User = require('./models/User'); // make sure models/User.js exists
+const predictionService = require('./ml/predictionService');
 
 console.log('🚀 Starting Sports App Server...');
 console.log('📝 MongoDB URI configured:', process.env.MONGODB_URI ? '✅' : '❌');
@@ -21,6 +22,12 @@ const footballRoutes = require('./football');
 // Import booking routes
 const bookingRoutes = require('./routes/booking');
 
+// Import prediction routes
+const predictionRoutes = require('./routes/prediction');
+
+// Import userPrediction routes
+const userPredictionsRoutes = require('./routes/userPredictions');
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -29,6 +36,10 @@ app.use(express.json());
 app.use('/api/football', footballRoutes);
 // Mount booking routes
 app.use('/api/booking', bookingRoutes);
+// Mount prediction routes
+app.use('/api/prediction', predictionRoutes);
+// Mount userPrediction routes
+app.use('/api/user-predictions', userPredictionsRoutes);
 
 // MongoDB connection
 async function connectDB() {
@@ -51,6 +62,7 @@ app.get('/api/health', (req, res) => {
       mongodb: !!process.env.MONGODB_URI,
       apiFootball: !!process.env.API_FOOTBALL_KEY,
       newsApi: !!process.env.NEWS_API_KEY,
+      mlModel: predictionService.isReady,
     }
   });
 });
@@ -198,7 +210,7 @@ app.get('/api/info', (req, res) => {
   res.json({
     name: 'Sports App API',
     version: '2.0.0',
-    description: 'Sports events and news API using API-Football and NewsAPI',
+    description: 'Sports events and news API using API-Football and NewsAPI with ML-powered predictions',
     endpoints: {
       health: 'GET /api/health',
       info: 'GET /api/info',
@@ -217,6 +229,9 @@ app.get('/api/info', (req, res) => {
         teams_search: 'GET /api/football/teams/search?q={query}',
         match: 'GET /api/football/match/{id}',
         team: 'GET /api/football/team/{id}',
+      },
+      prediction: {
+        match: 'GET /api/prediction/match/{matchId}',
       }
     },
     leagues: {
@@ -226,6 +241,15 @@ app.get('/api/info', (req, res) => {
       78: 'Bundesliga',
       61: 'Ligue 1',
       2: 'Champions League',
+    },
+    ml: {
+      enabled: predictionService.isReady,
+      accuracy: predictionService.metadata?.accuracy 
+        ? `${(predictionService.metadata.accuracy * 100).toFixed(2)}%` 
+        : 'N/A',
+      teams: predictionService.metadata?.teamStats 
+        ? Object.keys(predictionService.metadata.teamStats).length 
+        : 0,
     }
   });
 });
@@ -239,15 +263,30 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
-connectDB().then(() => {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log('');
-    console.log('✅ ========================================');
-    console.log(`✅ Server listening on http://0.0.0.0:${PORT}`);
-    console.log(`✅ Health check: http://0.0.0.0:${PORT}/api/health`);
-    console.log(`✅ API info: http://0.0.0.0:${PORT}/api/info`);
-    console.log('✅ ========================================');
-    console.log('');
-  });
-});
+// Start server with ML model initialization
+async function startServer() {
+  try {
+    // Initialize ML model
+    await predictionService.initialize();
+    
+    // Connect to MongoDB
+    await connectDB();
+    
+    // Start Express server
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log('');
+      console.log('✅ ========================================');
+      console.log(`✅ Server listening on http://0.0.0.0:${PORT}`);
+      console.log(`✅ Health check: http://0.0.0.0:${PORT}/api/health`);
+      console.log(`✅ API info: http://0.0.0.0:${PORT}/api/info`);
+      console.log('✅ ========================================');
+      console.log('');
+    });
+  } catch (err) {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
+  }
+}
+
+// Start everything
+startServer();
