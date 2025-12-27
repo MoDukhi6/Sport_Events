@@ -5,8 +5,9 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const axios = require('axios');
 
-const User = require('./models/User'); // make sure models/User.js exists
+const User = require('./models/User');
 const predictionService = require('./ml/predictionService');
+const { startCronJobs } = require('./utils/cronJobs');
 
 console.log('🚀 Starting Sports App Server...');
 console.log('📝 MongoDB URI configured:', process.env.MONGODB_URI ? '✅' : '❌');
@@ -63,6 +64,7 @@ app.get('/api/health', (req, res) => {
       apiFootball: !!process.env.API_FOOTBALL_KEY,
       newsApi: !!process.env.NEWS_API_KEY,
       mlModel: predictionService.isReady,
+      cronJobs: true,
     }
   });
 });
@@ -250,6 +252,11 @@ app.get('/api/info', (req, res) => {
       teams: predictionService.metadata?.teamStats 
         ? Object.keys(predictionService.metadata.teamStats).length 
         : 0,
+    },
+    cronJobs: {
+      enabled: true,
+      interval: 'Every 2 hours',
+      nextRun: 'Top of next even hour (00:00, 02:00, 04:00, etc.)',
     }
   });
 });
@@ -263,7 +270,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server with ML model initialization
+// Start server with ML model initialization and cron jobs
 async function startServer() {
   try {
     // Initialize ML model
@@ -272,6 +279,9 @@ async function startServer() {
     // Connect to MongoDB
     await connectDB();
     
+    // Start cron jobs
+    startCronJobs();
+    
     // Start Express server
     app.listen(PORT, '0.0.0.0', () => {
       console.log('');
@@ -279,6 +289,7 @@ async function startServer() {
       console.log(`✅ Server listening on http://0.0.0.0:${PORT}`);
       console.log(`✅ Health check: http://0.0.0.0:${PORT}/api/health`);
       console.log(`✅ API info: http://0.0.0.0:${PORT}/api/info`);
+      console.log('✅ Cron jobs: Checking predictions every 2 hours');
       console.log('✅ ========================================');
       console.log('');
     });

@@ -118,90 +118,228 @@ router.get('/stats/:userId', async (req, res) => {
   }
 });
 
-// Check if match result is available and update predictions
+// Check if match result is available and update predictions (manual trigger for specific user)
 router.post('/check-results', async (req, res) => {
   try {
-    const { matchId } = req.body;
+    const { userId } = req.body;
 
-    // Fetch match result from API
-    const matchResponse = await api.get('/fixtures', { params: { id: matchId } });
-    const match = matchResponse.data.response[0];
+    // Find all pending predictions for this user
+    const predictions = await UserPrediction.find({ userId, status: 'pending' });
 
-    if (!match || match.fixture.status.short !== 'FT') {
-      return res.json({ message: 'Match not finished yet' });
-    }
-
-    const actualHomeGoals = match.goals.home;
-    const actualAwayGoals = match.goals.away;
-
-    // Find all pending predictions for this match
-    const predictions = await UserPrediction.find({ matchId, status: 'pending' });
+    let checkedMatches = 0;
+    let updatedPredictions = 0;
 
     for (const prediction of predictions) {
-      let pointsEarned = 0;
-      let status = 'wrong';
+      try {
+        // Fetch match result from API
+        const matchResponse = await api.get('/fixtures', { params: { id: prediction.matchId } });
+        const match = matchResponse.data.response[0];
 
-      // Check if exact score
-      if (
-        prediction.predictedHomeGoals === actualHomeGoals &&
-        prediction.predictedAwayGoals === actualAwayGoals
-      ) {
-        pointsEarned = 3;
-        status = 'correct_score';
-      }
-      // Check if correct winner
-      else {
-        const predictedWinner =
-          prediction.predictedHomeGoals > prediction.predictedAwayGoals
-            ? 'home'
-            : prediction.predictedHomeGoals < prediction.predictedAwayGoals
-            ? 'away'
-            : 'draw';
-
-        const actualWinner =
-          actualHomeGoals > actualAwayGoals ? 'home' : actualHomeGoals < actualAwayGoals ? 'away' : 'draw';
-
-        if (predictedWinner === actualWinner) {
-          pointsEarned = 1;
-          status = 'correct_winner';
-        }
-      }
-
-      // Update prediction
-      prediction.actualHomeGoals = actualHomeGoals;
-      prediction.actualAwayGoals = actualAwayGoals;
-      prediction.pointsEarned = pointsEarned;
-      prediction.status = status;
-      await prediction.save();
-
-      // Update user stats
-      const user = await User.findById(prediction.userId);
-      if (user) {
-        user.gameStats.totalPoints += pointsEarned;
-        user.gameStats.level = calculateLevel(user.gameStats.totalPoints);
-
-        if (status === 'correct_score') {
-          user.gameStats.perfectPredictions += 1;
-          user.gameStats.currentStreak += 1;
-        } else if (status === 'correct_winner') {
-          user.gameStats.correctWinners += 1;
-          user.gameStats.currentStreak += 1;
-        } else {
-          user.gameStats.currentStreak = 0;
+        if (!match || match.fixture.status.short !== 'FT') {
+          continue; // Skip if match not finished
         }
 
-        if (user.gameStats.currentStreak > user.gameStats.longestStreak) {
-          user.gameStats.longestStreak = user.gameStats.currentStreak;
+        const actualHomeGoals = match.goals.home;
+        const actualAwayGoals = match.goals.away;
+
+        let pointsEarned = 0;
+        let status = 'wrong';
+
+        // Check if exact score
+        if (
+          prediction.predictedHomeGoals === actualHomeGoals &&
+          prediction.predictedAwayGoals === actualAwayGoals
+        ) {
+          pointsEarned = 3;
+          status = 'correct_score';
+        }
+        // Check if correct winner
+        else {
+          const predictedWinner =
+            prediction.predictedHomeGoals > prediction.predictedAwayGoals
+              ? 'home'
+              : prediction.predictedHomeGoals < prediction.predictedAwayGoals
+              ? 'away'
+              : 'draw';
+
+          const actualWinner =
+            actualHomeGoals > actualAwayGoals ? 'home' : actualHomeGoals < actualAwayGoals ? 'away' : 'draw';
+
+          if (predictedWinner === actualWinner) {
+            pointsEarned = 1;
+            status = 'correct_winner';
+          }
         }
 
-        await user.save();
+        // Update prediction
+        prediction.actualHomeGoals = actualHomeGoals;
+        prediction.actualAwayGoals = actualAwayGoals;
+        prediction.pointsEarned = pointsEarned;
+        prediction.status = status;
+        await prediction.save();
+
+        // Update user stats
+        const user = await User.findById(prediction.userId);
+        if (user) {
+          user.gameStats.totalPoints += pointsEarned;
+          user.gameStats.level = calculateLevel(user.gameStats.totalPoints);
+
+          if (status === 'correct_score') {
+            user.gameStats.perfectPredictions += 1;
+            user.gameStats.currentStreak += 1;
+          } else if (status === 'correct_winner') {
+            user.gameStats.correctWinners += 1;
+            user.gameStats.currentStreak += 1;
+          } else {
+            user.gameStats.currentStreak = 0;
+          }
+
+          if (user.gameStats.currentStreak > user.gameStats.longestStreak) {
+            user.gameStats.longestStreak = user.gameStats.currentStreak;
+          }
+
+          await user.save();
+        }
+
+        updatedPredictions++;
+        checkedMatches++;
+      } catch (err) {
+        console.error(`Error checking match ${prediction.matchId}:`, err.message);
       }
     }
 
-    res.json({ success: true, updated: predictions.length });
+    res.json({ success: true, checkedMatches, updatedPredictions });
   } catch (err) {
     console.error('Error checking results:', err);
     res.status(500).json({ error: 'Failed to check results' });
+  }
+});
+
+// Check ALL pending predictions (for cron job)
+router.post('/check-all-results', async (req, res) => {
+  try {
+    // Find all pending predictions with matches that should have finished
+    const now = new Date();
+    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000); // 2 hours buffer
+
+    const pendingPredictions = await UserPrediction.find({
+      status: 'pending',
+      matchDate: { $lt: twoHoursAgo }, // Match should have finished at least 2 hours ago
+    });
+
+    console.log(`Found ${pendingPredictions.length} pending predictions to check`);
+
+    let checkedMatches = 0;
+    let updatedPredictions = 0;
+
+    // Group predictions by matchId to avoid duplicate API calls
+    const matchGroups = {};
+    pendingPredictions.forEach((pred) => {
+      if (!matchGroups[pred.matchId]) {
+        matchGroups[pred.matchId] = [];
+      }
+      matchGroups[pred.matchId].push(pred);
+    });
+
+    // Check each unique match
+    for (const matchId of Object.keys(matchGroups)) {
+      try {
+        // Fetch match result from API
+        const matchResponse = await api.get('/fixtures', { params: { id: matchId } });
+        const match = matchResponse.data.response[0];
+
+        if (!match) {
+          console.log(`Match ${matchId} not found in API`);
+          continue;
+        }
+
+        const status = match.fixture.status.short;
+
+        // Only process if match is finished
+        if (status === 'FT' || status === 'AET' || status === 'PEN') {
+          const actualHomeGoals = match.goals.home;
+          const actualAwayGoals = match.goals.away;
+
+          // Update all predictions for this match
+          for (const prediction of matchGroups[matchId]) {
+            let pointsEarned = 0;
+            let predictionStatus = 'wrong';
+
+            // Check if exact score
+            if (
+              prediction.predictedHomeGoals === actualHomeGoals &&
+              prediction.predictedAwayGoals === actualAwayGoals
+            ) {
+              pointsEarned = 3;
+              predictionStatus = 'correct_score';
+            }
+            // Check if correct winner
+            else {
+              const predictedWinner =
+                prediction.predictedHomeGoals > prediction.predictedAwayGoals
+                  ? 'home'
+                  : prediction.predictedHomeGoals < prediction.predictedAwayGoals
+                  ? 'away'
+                  : 'draw';
+
+              const actualWinner =
+                actualHomeGoals > actualAwayGoals ? 'home' : actualHomeGoals < actualAwayGoals ? 'away' : 'draw';
+
+              if (predictedWinner === actualWinner) {
+                pointsEarned = 1;
+                predictionStatus = 'correct_winner';
+              }
+            }
+
+            // Update prediction
+            prediction.actualHomeGoals = actualHomeGoals;
+            prediction.actualAwayGoals = actualAwayGoals;
+            prediction.pointsEarned = pointsEarned;
+            prediction.status = predictionStatus;
+            await prediction.save();
+
+            // Update user stats
+            const user = await User.findById(prediction.userId);
+            if (user) {
+              user.gameStats.totalPoints += pointsEarned;
+              user.gameStats.level = calculateLevel(user.gameStats.totalPoints);
+
+              if (predictionStatus === 'correct_score') {
+                user.gameStats.perfectPredictions += 1;
+                user.gameStats.currentStreak += 1;
+              } else if (predictionStatus === 'correct_winner') {
+                user.gameStats.correctWinners += 1;
+                user.gameStats.currentStreak += 1;
+              } else {
+                user.gameStats.currentStreak = 0;
+              }
+
+              if (user.gameStats.currentStreak > user.gameStats.longestStreak) {
+                user.gameStats.longestStreak = user.gameStats.currentStreak;
+              }
+
+              await user.save();
+            }
+
+            updatedPredictions++;
+          }
+
+          checkedMatches++;
+        }
+      } catch (err) {
+        console.error(`Error checking match ${matchId}:`, err.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      checkedMatches,
+      updatedPredictions,
+      totalPending: pendingPredictions.length,
+    });
+  } catch (err) {
+    console.error('Error in check-all-results:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
