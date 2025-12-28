@@ -349,11 +349,11 @@ router.get('/leaderboard', async (req, res) => {
     const topUsers = await User.find()
       .sort({ 'gameStats.totalPoints': -1 })
       .limit(10)
-      .select('name email gameStats');
+      .select('username email gameStats');
 
     const leaderboard = topUsers.map((user, index) => ({
       rank: index + 1,
-      name: user.name,
+      name: user.username || user.email || 'Unknown',
       points: user.gameStats.totalPoints || 0,
       level: calculateLevel(user.gameStats.totalPoints || 0),
       badge: getBadge(calculateLevel(user.gameStats.totalPoints || 0)),

@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -42,7 +43,7 @@ export default function MatchesScreen() {
   // Date picker state
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [customDate, setCustomDate] = useState(new Date());
-  const [tempDate, setTempDate] = useState(new Date()); // For iOS confirmation
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   // AI Prediction modal state
   const [showPrediction, setShowPrediction] = useState(false);
@@ -191,30 +192,25 @@ export default function MatchesScreen() {
     loadFixtures();
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
+  const handleDateChange = (event: any, date?: Date) => {
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
-      if (selectedDate && event.type !== 'dismissed') {
-        setCustomDate(selectedDate);
+      if (date && event.type !== 'dismissed') {
+        setCustomDate(date);
         setSelectedTab('custom');
       }
-    } else if (Platform.OS === 'ios') {
-      // On iOS, just update temp date, user will confirm
-      if (selectedDate) {
-        setTempDate(selectedDate);
+    } else {
+      // iOS - just update the selected date
+      if (date) {
+        setSelectedDate(date);
       }
     }
   };
 
-  const confirmIOSDate = () => {
-    setCustomDate(tempDate);
+  const handleDateConfirm = () => {
+    setCustomDate(selectedDate);
     setSelectedTab('custom');
     setShowDatePicker(false);
-  };
-
-  const cancelIOSDate = () => {
-    setShowDatePicker(false);
-    setTempDate(customDate); // Reset to previous date
   };
 
   const openDatePicker = () => {
@@ -250,7 +246,7 @@ export default function MatchesScreen() {
       input.click();
     } else {
       // Native (iOS/Android)
-      setTempDate(customDate); // Initialize with current custom date
+      setSelectedDate(customDate);
       setShowDatePicker(true);
     }
   };
@@ -519,42 +515,50 @@ export default function MatchesScreen() {
           </Pressable>
         </View>
 
-        {/* Date Picker */}
-        {showDatePicker && Platform.OS !== 'web' && (
-          <>
-            {Platform.OS === 'ios' && (
-              <View style={styles.iosDatePickerContainer}>
-                <View style={styles.iosDatePickerHeader}>
-                  <Pressable onPress={cancelIOSDate} style={styles.iosDatePickerButton}>
-                    <Text style={styles.iosDatePickerCancelText}>Cancel</Text>
+        {/* Date Picker Modal for iOS */}
+        {Platform.OS === 'ios' && (
+          <Modal
+            visible={showDatePicker}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowDatePicker(false)}
+          >
+            <View style={styles.datePickerOverlay}>
+              <View style={styles.datePickerModal}>
+                <View style={styles.datePickerHeader}>
+                  <Pressable onPress={() => setShowDatePicker(false)}>
+                    <Text style={styles.datePickerCancel}>Cancel</Text>
                   </Pressable>
-                  <Text style={styles.iosDatePickerTitle}>Select Date</Text>
-                  <Pressable onPress={confirmIOSDate} style={styles.iosDatePickerButton}>
-                    <Text style={styles.iosDatePickerDoneText}>Done</Text>
+                  <Text style={styles.datePickerTitle}>Select Date</Text>
+                  <Pressable onPress={handleDateConfirm}>
+                    <Text style={styles.datePickerDone}>Done</Text>
                   </Pressable>
                 </View>
+                
                 <DateTimePicker
-                  value={tempDate}
+                  value={selectedDate}
                   mode="date"
-                  display="spinner"
+                  display="inline"
                   onChange={handleDateChange}
+                  style={styles.dateTimePicker}
                   maximumDate={new Date(2026, 11, 31)}
                   minimumDate={new Date(2024, 0, 1)}
                 />
               </View>
-            )}
-            
-            {Platform.OS === 'android' && (
-              <DateTimePicker
-                value={customDate}
-                mode="date"
-                display="default"
-                onChange={handleDateChange}
-                maximumDate={new Date(2026, 11, 31)}
-                minimumDate={new Date(2024, 0, 1)}
-              />
-            )}
-          </>
+            </View>
+          </Modal>
+        )}
+
+        {/* Date Picker for Android */}
+        {Platform.OS === 'android' && showDatePicker && (
+          <DateTimePicker
+            value={customDate}
+            mode="date"
+            display="default"
+            onChange={handleDateChange}
+            maximumDate={new Date(2026, 11, 31)}
+            minimumDate={new Date(2024, 0, 1)}
+          />
         )}
 
         {/* live count banner */}
@@ -680,43 +684,44 @@ const styles = StyleSheet.create({
     color: '#dbeafe',
   },
 
-  // iOS Date Picker Styles
-  iosDatePickerContainer: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    marginTop: 12,
-    marginBottom: 12,
-    overflow: 'hidden',
+  // iOS Date Picker Modal Styles
+  datePickerOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  iosDatePickerHeader: {
+  datePickerModal: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 34,
+  },
+  datePickerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
     paddingHorizontal: 16,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
-    backgroundColor: '#f9fafb',
   },
-  iosDatePickerButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  iosDatePickerCancelText: {
-    fontSize: 16,
-    color: '#ef4444',
+  datePickerTitle: {
+    fontSize: 17,
     fontWeight: '600',
+    color: '#111827',
   },
-  iosDatePickerDoneText: {
-    fontSize: 16,
+  datePickerCancel: {
+    fontSize: 17,
+    color: '#ef4444',
+  },
+  datePickerDone: {
+    fontSize: 17,
     color: '#2563eb',
     fontWeight: '600',
   },
-  iosDatePickerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
+  dateTimePicker: {
+    height: 260,
+    backgroundColor: '#fff',
   },
 
   liveCountBanner: {
