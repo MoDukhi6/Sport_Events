@@ -538,11 +538,11 @@ export default function MatchesScreen() {
                 <DateTimePicker
                   value={selectedDate}
                   mode="date"
-                  display="inline"
+                  display="spinner"
                   onChange={handleDateChange}
-                  style={styles.dateTimePicker}
                   maximumDate={new Date(2026, 11, 31)}
                   minimumDate={new Date(2024, 0, 1)}
+                  textColor="#000000"
                 />
               </View>
             </View>
@@ -720,8 +720,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   dateTimePicker: {
-    height: 260,
+    height: 216,
     backgroundColor: '#fff',
+    width: '100%',
   },
 
   liveCountBanner: {
