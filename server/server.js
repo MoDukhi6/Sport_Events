@@ -135,45 +135,85 @@ app.get('/api/users/:id', async (req, res) => {
   }
 });
 
-// Sports news route
+// Sports news route with search support
 app.get('/api/news', async (req, res) => {
   const rawSport = (req.query.sport || 'all').toString().toLowerCase();
   const page = Math.max(parseInt(req.query.page || '1', 10), 1);
+  const searchQuery = req.query.search ? req.query.search.toString().trim() : '';
 
-  // Map frontend "sport" to NewsAPI query
+  // If user provides a search query, use it directly
   let q;
+  
+  if (searchQuery) {
+    // User custom search - combine with sport category if not 'all'
+    if (rawSport === 'all') {
+      q = searchQuery;
+    } else {
+      // Combine search with sport category
+      let sportQuery = '';
+      switch (rawSport) {
+        case 'football':
+          sportQuery = '(soccer OR football OR "premier league" OR "la liga" OR "serie a" OR "bundesliga" OR "champions league")';
+          break;
+        case 'basketball':
+          sportQuery = '(basketball OR NBA OR EuroLeague)';
+          break;
+        case 'baseball':
+          sportQuery = '(baseball OR MLB)';
+          break;
+        case 'tennis':
+          sportQuery = '(tennis OR ATP OR WTA)';
+          break;
+        case 'formula1':
+          sportQuery = '("Formula 1" OR F1 OR "Grand Prix")';
+          break;
+        case 'hockey':
+          sportQuery = '(hockey OR NHL)';
+          break;
+        default:
+          sportQuery = '';
+      }
+      
+      if (sportQuery) {
+        q = `${searchQuery} AND ${sportQuery}`;
+      } else {
+        q = searchQuery;
+      }
+    }
+  } else {
+    // Default category queries (no search)
+    switch (rawSport) {
+      case 'football':
+        q = `(soccer OR "football" OR "premier league" OR "la liga" OR "serie a" OR "bundesliga" OR "champions league" OR "uefa" OR "world cup") AND NOT ("NFL" OR "american football")`;
+        break;
 
-  switch (rawSport) {
-    case 'football':
-      q = `(soccer OR "football" OR "premier league" OR "la liga" OR "serie a" OR "bundesliga" OR "champions league" OR "uefa" OR "world cup") AND NOT ("NFL" OR "american football")`;
-      break;
+      case 'basketball':
+        q = `basketball OR "NBA" OR "EuroLeague"`;
+        break;
 
-    case 'basketball':
-      q = `basketball OR "NBA" OR "EuroLeague"`;
-      break;
+      case 'baseball':
+        q = `baseball OR "MLB"`;
+        break;
 
-    case 'baseball':
-      q = `baseball OR "MLB"`;
-      break;
+      case 'tennis':
+        q = `tennis OR "ATP" OR "WTA" OR "grand slam"`;
+        break;
 
-    case 'tennis':
-      q = `tennis OR "ATP" OR "WTA" OR "grand slam"`;
-      break;
+      case 'formula1':
+      case 'formula 1':
+      case 'f1':
+        q = `"Formula 1" OR "F1" OR "Grand Prix"`;
+        break;
 
-    case 'formula1':
-    case 'formula 1':
-    case 'f1':
-      q = `"Formula 1" OR "F1" OR "Grand Prix"`;
-      break;
+      case 'hockey':
+        q = `hockey OR "NHL" OR "ice hockey"`;
+        break;
 
-    case 'hockey':
-      q = `hockey OR "NHL" OR "ice hockey"`;
-      break;
-
-    case 'all':
-    default:
-      q = `(soccer OR "football" OR "premier league" OR "la liga" OR "champions league" OR basketball OR NBA OR tennis OR baseball OR MLB OR hockey OR NHL OR "Formula 1" OR F1)`;
-      break;
+      case 'all':
+      default:
+        q = `(soccer OR "football" OR "premier league" OR "la liga" OR "champions league" OR basketball OR NBA OR tennis OR baseball OR MLB OR hockey OR NHL OR "Formula 1" OR F1)`;
+        break;
+    }
   }
 
   try {
@@ -216,7 +256,7 @@ app.get('/api/info', (req, res) => {
     endpoints: {
       health: 'GET /api/health',
       info: 'GET /api/info',
-      news: 'GET /api/news?sport={sport}&page={page}',
+      news: 'GET /api/news?sport={sport}&page={page}&search={query}',
       auth: {
         register: 'POST /api/auth/register',
         login: 'POST /api/auth/login',

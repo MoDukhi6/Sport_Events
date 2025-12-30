@@ -14,14 +14,23 @@ export type Article = {
  * Fetch sports news from your Node backend
  * category = 'all' | 'football' | 'basketball' | ...
  * page = 1, 2, 3...
+ * search = optional search query
  */
 export async function fetchSportsNews(
   category: string,
-  page: number = 1
+  page: number = 1,
+  search?: string
 ): Promise<Article[]> {
-  const url = `${API_BASE_URL}/api/news?sport=${encodeURIComponent(
-    category
-  )}&page=${page}`;
+  const params = new URLSearchParams({
+    sport: category,
+    page: page.toString(),
+  });
+
+  if (search && search.trim()) {
+    params.append('search', search.trim());
+  }
+
+  const url = `${API_BASE_URL}/api/news?${params}`;
 
   console.log('📰 fetchSportsNews calling:', url);
 
