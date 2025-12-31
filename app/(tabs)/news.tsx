@@ -33,10 +33,11 @@ export default function NewsScreen() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchActive, setSearchActive] = useState(false);
-  const [searchTimeout, setSearchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [searchTimeout, setSearchTimeout] =
+    useState<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,10 +49,11 @@ export default function NewsScreen() {
 
       try {
         const data = await fetchSportsNews(
-          selectedCategory, 
-          1, 
+          selectedCategory,
+          1,
           searchQuery.trim() || undefined
         );
+
         if (!cancelled) {
           setArticles(data);
           setHasMore(data.length > 0);
@@ -76,21 +78,19 @@ export default function NewsScreen() {
 
   const handleSearchChange = (text: string) => {
     setSearchQuery(text);
-    
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
-    }
-    
+
+    if (searchTimeout) clearTimeout(searchTimeout);
+
     const timeout = setTimeout(() => {
-      setSearchActive(prev => !prev);
+      setSearchActive((prev) => !prev);
     }, 500);
-    
+
     setSearchTimeout(timeout);
   };
 
   const handleClearSearch = () => {
     setSearchQuery('');
-    setSearchActive(prev => !prev);
+    setSearchActive((prev) => !prev);
   };
 
   const handleLoadMore = useCallback(async () => {
@@ -101,8 +101,8 @@ export default function NewsScreen() {
 
     try {
       const more = await fetchSportsNews(
-        selectedCategory, 
-        nextPage, 
+        selectedCategory,
+        nextPage,
         searchQuery.trim() || undefined
       );
 
@@ -147,6 +147,7 @@ export default function NewsScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.chips}
+          contentContainerStyle={styles.chipsContent}
         >
           {CATEGORIES.map((cat) => (
             <Pressable
@@ -183,9 +184,7 @@ export default function NewsScreen() {
               {searchQuery ? 'No results found' : 'No news available'}
             </Text>
             <Text style={styles.emptySubtext}>
-              {searchQuery 
-                ? `Try searching for something else` 
-                : 'Try selecting a different category'}
+              {searchQuery ? 'Try searching for something else' : 'Try selecting a different category'}
             </Text>
           </View>
         ) : (
@@ -209,18 +208,16 @@ export default function NewsScreen() {
                   } as never)
                 }
               >
-                {item.urlToImage && (
+                {item.urlToImage ? (
                   <Image source={{ uri: item.urlToImage }} style={styles.image} />
-                )}
+                ) : null}
 
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardTitle}>{item.title}</Text>
                   <Text numberOfLines={3} style={styles.cardDescription}>
                     {item.description}
                   </Text>
-                  {item.source && (
-                    <Text style={styles.source}>{item.source}</Text>
-                  )}
+                  {item.source ? <Text style={styles.source}>{item.source}</Text> : null}
                 </View>
               </Pressable>
             )}
@@ -258,7 +255,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 6,
   },
-  
+
   searchContainer: {
     marginBottom: 6,
   },
@@ -291,21 +288,26 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     fontWeight: '600',
   },
-  
-  chips: { 
+
+  // ✅ Smaller chip row spacing
+  chips: {
     marginBottom: 10,
     flexGrow: 0,
-    paddingVertical: 12,
   },
+  chipsContent: {
+    paddingVertical: 6,
+  },
+
+  // ✅ Smaller category buttons
   chip: {
-    paddingHorizontal: 22,
-    paddingVertical: 18,
-    borderRadius: 30,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#666',
     marginRight: 8,
     backgroundColor: '#fff',
-    minHeight: 60,
+    minHeight: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -313,14 +315,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#111827',
     borderColor: '#111827',
   },
-  chipText: { 
+  chipText: {
     color: '#111',
-    fontSize: 15,
+    fontSize: 14, 
     fontWeight: '500',
-    lineHeight: 22,
   },
-  chipTextActive: { 
-    color: '#fff', 
+  chipTextActive: {
+    color: '#fff',
     fontWeight: '600',
   },
 
@@ -334,7 +335,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
   },
-  
+
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -366,22 +367,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
   },
-  image: { 
-    width: 90, 
-    height: 90, 
+  image: {
+    width: 90,
+    height: 90,
     borderRadius: 8,
   },
-  cardTitle: { 
-    fontSize: 16, 
+  cardTitle: {
+    fontSize: 16,
     fontWeight: '600',
   },
-  cardDescription: { 
-    fontSize: 14, 
+  cardDescription: {
+    fontSize: 14,
     color: '#555',
   },
-  source: { 
-    fontSize: 12, 
-    color: '#999', 
+  source: {
+    fontSize: 12,
+    color: '#999',
     marginTop: 4,
   },
 });
