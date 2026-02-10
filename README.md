@@ -44,4 +44,37 @@ cd SportEvents
 
 npx expo start
 
+then...
+
+Change the IP inside constants -> api.ts to make sure that server will start fully functional.
+
+Expo versions:
+
+expo@54.0.30
+
+expo-constants@18.0.12
+ 
+expo-font@14.0.10
+ 
+expo-router@6.0.21
+ 
+
+Packages:
+
+├── @react-native-async-storage/async-storage@2.2.0
+
+├── @tensorflow/tfjs-backend-cpu@4.22.0
+
+├── @tensorflow/tfjs@4.22.0
+
+├── axios@1.13.2
+
+├── cors@2.8.5
+
+├── dotenv@17.2.3
+
+├── express@5.1.0
+
+├── mongoose@8.19.4
+
 ########## IMPORTANT ##########
