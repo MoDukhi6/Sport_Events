@@ -86,3 +86,71 @@ Packages:
 ├── mongoose@8.19.4
 
 ########## IMPORTANT ##########
+
+
+
+===========================================
+ENVIRONMENT VARIABLES FOR SPORTS APP
+===========================================
+
+Copy this content into server/.env file:
+
+PORT=4000
+MONGODB_URI=mongodb+srv://AhmadAJ:abojablahmad123@cluster0.blbrqyj.mongodb.net/Sports_Events?retryWrites=true&w=majority&appName=Cluster0
+NEWS_API_KEY=c0a55249c74348468efca15bba7a8ce6
+API_FOOTBALL_KEY=bf6d4b2c793f19ead3494a046d3df7ce
+SPORTMONKS_API_KEY=0Dp1wAE5lGy9hCRlENVZD3ZM5KYKfDoaZsk5awK0K9FVJMZ5gPtqkgufoKlp
+
+===========================================
+SETUP INSTRUCTIONS:
+1. Navigate to server folder
+2. Create a file named .env
+3. Paste the above content
+4. Save the file
+5. Run: npm install
+6. Run: npm run dev
+===========================================
+
+------------------------------------------------------------------------------------------------------------------------
+
+In case the above variables did not work for you,
+then here is how you can get your personal required variables that need to be set in `server/.env`:
+
+### Required Variables:
+
+**MONGODB_URI**
+- Description: MongoDB Atlas connection string
+- Format: `mongodb+srv://username:password@cluster.mongodb.net/database-name`
+- How to obtain: 
+  1. Go to MongoDB Atlas (mongodb.com)
+  2. Clusters → Connect → Drivers
+  3. Copy connection string
+  4. Replace <password> with your database password
+
+**API_FOOTBALL_KEY**
+- Description: API key for football match data
+- Format: 32-character alphanumeric string
+- How to obtain:
+  1. Go to api-football.com
+  2. Sign up for Pro plan
+  3. Copy API key from dashboard
+
+**NEWS_API_KEY**
+- Description: API key for sports news articles
+- Format: 32-character alphanumeric string
+- How to obtain:
+  1. Go to newsapi.org
+  2. Sign up for free account
+  3. Copy API key from dashboard
+
+**PORT**
+- Description: Server port number
+- Default: 4000
+
+---------------------------------------------------------------
+### Example .env File:
+```
+MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/sports-events
+API_FOOTBALL_KEY=abc123...
+NEWS_API_KEY=xyz789...
+PORT=4000
