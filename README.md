@@ -25,26 +25,23 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
-## Get a fresh project
 
-When you're ready, run:
+########## IMPORTANT ##########
 
-```bash
-npm run reset-project
-```
+to start the server:
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+inside VSCode terminal:
 
-## Learn more
+cd server
 
-To learn more about developing your project with Expo, look at the following resources:
+npm start dev
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+then to start the the app:
 
-## Join the community
+inside computer tterminal:
 
-Join our community of developers creating universal apps.
+cd SportEvents
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+npx expo start
+
+########## IMPORTANT ##########
