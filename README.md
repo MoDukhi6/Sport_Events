@@ -40,6 +40,8 @@ inside VSCode terminal:
 
 cd server
 
+npm install (just for the first time)
+
 npm start dev
 
 then to start the the app:
